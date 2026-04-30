@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Local Model Knowledge Base Assistant</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-dot"></span>
+        Local RAG Studio
+      </div>
+      <div class="topbar-right">
+        <div class="kb-info">
+          Knowledge Base: <span id="kb-count">0</span> documents
+        </div>
+        <button id="lang-toggle-btn" class="small-btn lang-toggle-btn" type="button">EN</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Left panel: Chat window -->
+      <section class="left-panel">
+        <div class="panel-header">
+          <div class="panel-title" style="text-align: center;">Coursework Practice Assistant</div>
+            <div class="panel-subtitle gradient-text">
+              Please upload your study materials to Knowledge Base, then select question type to Generate Questions.
+            </div>
+        </div>
+
+        <div class="input-row">
+          <!-- Question settings: type + amount -->
+          <div class="source-row">
+            <span class="source-label" style="font-size: 16px; font-weight: 600;">Type</span>
+
+            <label style="margin-right: 12px; font-size: 16px; font-weight: 600;">
+              <input type="radio" name="question-type" value="fill_blank" checked />
+              Fill-in-the-blank
+            </label>
+
+            <label style="margin-right: 12px; font-size: 16px; font-weight: 600;">
+              <input type="radio" name="question-type" value="multiple_choice" />
+              Multiple Choice
+            </label>
+
+            <label style="margin-right: 12px; font-size: 16px; font-weight: 600;">
+              <input type="radio" name="question-type" value="short_answer" />
+              Short Answer
+            </label>
+
+            <span
+              class="source-label"
+              style="margin-left: 16px; font-size: 16px; font-weight: 600;"
+            >
+              Count
+            </span>
+            <input
+              id="question-count"
+              type="number"
+              min="1"
+              max="50"
+              value="5"
+              style="width: 70px; margin-left: 4px;"
+            />
+          </div>
+
+
+
+<!-- Input box + Send button -->
+<div class="textarea-row">
+  <textarea
+    id="user-input"
+    placeholder="Briefly describe the question scope, e.g., Generate 10 questions based on Lecture 3–5..."
+    style="display:none;"
+  ></textarea>
+
+  <button id="send-btn">Generate Questions</button>
+</div>
+</div>
+
+<div id="chat-window" class="chat-window">
+  <!-- Question card display area -->
+</div>
+
+<!-- New: question navigation + personalized feedback (center area) -->
+<div class="exam-nav-wrapper">
+  <button id="exam-prev-btn" class="question-nav-btn bottom-nav-btn">Last question</button>
+
+  <!--   Center area: feedback + scenario practice -->
+  <div class="exam-nav-center">
+    <!--     Scenario-based practice (moved here from question card)-->
+    <div id="scenario-entry" class="scenario-section scenario-entry-inline">
+      <div id="scenario-entry-title" class="scenario-title">
+        <!--        Scenario Practice (Redo Incorrect Questions)-->
+      </div>
+      <div id="scenario-entry-desc" class="scenario-desc">
+        You can click the button below to generate similar questions using the same concept.
+      </div>
+      <button
+        id="scenario-entry-btn"
+        class="scenario-btn"
+        type="button"
+        disabled
+      >
+        Available after answering incorrectly
+      </button>
+    </div>
+  </div>
+
+  <!-- 右侧：下一题 + 问卷填写 -->
+  <div class="exam-nav-right">
+    <button id="exam-next-btn" class="question-nav-btn bottom-nav-btn">Next question</button>
+
+    <a
+      href="https://survey.xjtlu.edu.cn/vm/Od13zJ.aspx"
+      target="_blank"
+      rel="noopener"
+      class="survey-btn"
+    >
+      Start Questionnaire
+    </a>
+  </div>
+</div>
+
+</section>
+
+<!-- Right panel: Knowledge Base upload -->
+<section class="right-panel">
+  <div class="bordered-box">
+    <h2>Knowledge Base</h2>
+    <p class="hint">
+      Supports uploading <strong>txt, md, pdf, docx, pptx</strong> and other formats.
+    </p>
+
+    <div class="upload-box">
+      <input id="file-input" type="file" multiple />
+      <button id="upload-btn">Upload to Knowledge Base</button>
+    </div>
+
+    <div id="upload-result" class="upload-result"></div>
+
+    <!-- Material selection list -->
+    <div class="material-list-box">
+      <div class="material-list-title">Select reference materials (enabled by default)</div>
+      <div id="material-list" class="material-list">
+        <!-- Dynamically filled by app.js -->
+      </div>
+      <div class="material-list-actions">
+        <button id="select-all-materials" class="small-btn" type="button">Select All</button>
+        <button id="clear-materials" class="small-btn" type="button">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Past Exam Database -->
+  <div class="exam-db-box">
+    <div class="exam-db-header">
+      <div class="exam-db-title">Model Question Bank</div>
+      <div class="exam-db-meta">
+        Total <span id="past-exam-count">0</span> questions
+      </div>
+    </div>
+
+    <!-- Information text -->
+    <p class="hint">
+      Supports uploading <strong>any type</strong> of previous model files (pdf, docx, pptx, etc.).
+      The system will generate similar questions based on the model.
+    </p>
+
+    <!-- Upload area -->
+    <div class="upload-box">
+      <input id="past-exam-file-input" type="file" multiple />
+      <button id="past-exam-upload-btn" type="button">Upload Previous Files</button>
+    </div>
+
+    <!-- Upload result -->
+    <div id="past-exam-upload-result" class="upload-result"></div>
+
+    <!-- Saved past exam questions -->
+    <div id="previous-files-list" class="files-db-list">
+      <!-- Dynamically filled by renderPastExamList() -->
+    </div>
+  </div>
+
+  <div id="score-panel" class="score-panel">
+    <div class="score-panel-header">
+      <div class="score-panel-title">Score Line Chart</div>
+      <div class="score-panel-meta">
+        <span id="score-latest">Latest: -- points</span>
+        <span id="score-count">Total Attempts: 0</span>
+      </div>
+    </div>
+    <canvas id="score-chart"></canvas>
+  </div>
+
+  <div class="tip-box">
+    <div class="tip-title">Tips</div>
+    <ul>
+      <li>Upload high-quality filtered documents first (e.g., review papers, empirical studies, etc.).</li>
+      <li>Uploading lecture slides, notes from your coursework is highly recommended.</li>
+    </ul>
+  </div>
+</section>
+</main>
+</div>
+
+
+<div id="scenario-modal" class="scenario-modal hidden">
+  <div class="scenario-modal-backdrop"></div>
+  <div class="scenario-modal-dialog">
+    <div class="scenario-modal-header">
+      <div class="scenario-modal-title">Scenario Practice</div>
+      <button
+        id="scenario-close-btn"
+        class="scenario-close-btn"
+        type="button"
+        aria-label="Close scenario practice"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="scenario-modal-body">
+      <!-- Scenario question text -->
+      <div id="scenario-modal-question" class="scenario-modal-question">
+        <!-- Filled by JS -->
+      </div>
+
+      <!-- Answer input area -->
+      <div class="scenario-modal-answer-block">
+        <div class="scenario-answer-label">Your Answer</div>
+        <textarea
+          id="scenario-modal-answer"
+          class="scenario-answer-input"
+          placeholder="Write your answer for the new scenario-based question here…"
+        ></textarea>
+      </div>
+
+      <!-- Four buttons: Submit / Another / Understood / Don't Understand -->
+      <div class="scenario-modal-actions">
+        <button
+          id="scenario-submit-btn"
+          class="scenario-submit-btn"
+          type="button"
+        >
+          Submit Answer
+        </button>
+        <button
+          id="scenario-next-btn"
+          class="scenario-next-btn"
+          type="button"
+        >
+          Another Question
+        </button>
+        <button
+          id="scenario-understand-btn"
+          class="understand-btn"
+          type="button"
+        >
+          I Understand
+        </button>
+        <button
+          id="scenario-dont-understand-btn"
+          class="dont-understand-btn"
+          type="button"
+        >
+          I Don’t Understand
+        </button>
+      </div>
+
+
+ <!-- Grading result -->
+<div
+  id="scenario-modal-result"
+  class="scenario-grade-result"
+></div>
+
+<!-- Explanation area (visible after clicking “I don’t understand”) -->
+<div
+  id="scenario-modal-explain"
+  class="explain-detail"
+  style="margin-top: 8px; display: none;"
+></div>
+
+<!-- Continue asking AI follow-up questions for this scenario -->
+<div
+  id="scenario-qa-panel"
+  class="qa-panel"
+  style="margin-top: 8px; display: none;"
+>
+  <div class="qa-panel-header">
+    <div class="qa-panel-title">Continue Asking About This Scenario</div>
+    <div class="qa-panel-subtitle">
+      You may ask further questions about this scenario, such as: “Could you explain it using another example?”
+    </div>
+  </div>
+  <div
+    id="scenario-qa-window"
+    class="qa-chat-window"
+  ></div>
+  <div class="qa-input-row">
+    <textarea
+      id="scenario-qa-input"
+      placeholder="Ask follow-up questions about this scenario."
+    ></textarea>
+    <button
+      id="scenario-qa-send-btn"
+      type="button"
+    >
+      ↑
+    </button>
+  </div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Detailed Explanation Popup -->
+<div id="explain-modal" class="scenario-modal hidden">
+  <div class="scenario-modal-backdrop"></div>
+  <div class="scenario-modal-dialog">
+    <div class="scenario-modal-header">
+      <div class="scenario-modal-title">Detailed Explanation</div>
+      <button
+        id="explain-close-btn"
+        class="scenario-close-btn"
+        type="button"
+        aria-label="Close explanation"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="scenario-modal-body">
+      <div id="explain-modal-question" class="scenario-modal-question"></div>
+      <div
+        id="explain-modal-content"
+        class="explain-detail"
+        style="margin-top: 8px;"
+      ></div>
+    </div>
+  </div>
+</div>
+
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

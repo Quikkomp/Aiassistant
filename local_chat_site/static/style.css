@@ -1,0 +1,2217 @@
+/* ===== 全局与背景：浅色科技风 ===== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.source-row label {
+    text-transform: none !important;
+}
+
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+  color: #111827;
+  background: #f3f4f6; /* ⭐ 整体浅灰白背景 */
+}
+
+/* 页面骨架 */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ===== 顶部导航 ===== */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  backdrop-filter: blur(12px);
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #111827;
+}
+
+.logo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #4f46e5, #0ea5e9);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.7);
+}
+
+.kb-info {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ===== 主体布局：左右两栏 ===== */
+
+.main {
+  flex: 1;
+  display: grid;
+
+  /* 左边：窄的（知识库），右边：宽的（生成器） */
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 2.1fr);
+  grid-template-areas: "right left";
+
+  gap: 18px;
+  padding: 18px 24px 24px;
+}
+
+
+@media (max-width: 900px) {
+  .main {
+    grid-template-columns: minmax(0, 1fr);
+    /* 小屏幕时改成上下排：上 left，下 right */
+    grid-template-areas:
+      "left"
+      "right";
+  }
+
+  .left-panel,
+  .right-panel {
+    grid-column: auto;  /* 防止旧的 grid-column 干扰 */
+  }
+}
+
+
+/* ===== 左侧：聊天卡片 ===== */
+
+.left-panel {
+  /* 原：grid-column: 2;  ❌ 改成区域名 */
+  grid-area: left;
+
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 16px 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.02);
+}
+
+/* 标题区域 */
+.panel-header {
+  margin-bottom: 10px;
+}
+
+.panel-title {
+    font-family: 'Playfair Display', serif !important;
+  font-size: 36px;  /* 根据需要调整 */
+  font-weight: 600;
+  color: #111827;
+  text-align: center;  /* 确保居中对齐 */
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #0ea5e9, #22c55e); /* 蓝绿渐变 */
+  -webkit-background-clip: text; /* 使背景应用到文本 */
+  color: transparent; /* 使文字透明，显示渐变色 */
+  font-weight: 600; /* 可选，增加字体的粗细 */
+}
+
+.panel-subtitle {
+  font-size: 16px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* 聊天窗口 */
+.chat-window {
+  flex: 1;
+  min-height: 320px;
+  max-height: 540px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 单题卡片 + 左右切换按钮布局 */
+.question-card-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 12px;
+}
+
+.question-nav-btn {
+  width: 38px;
+  min-width: 38px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+  color: #ffffff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.question-nav-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
+}
+
+.question-nav-btn:disabled {
+  opacity: 0.35;
+  box-shadow: none;
+  cursor: default;
+}
+
+.question-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  min-height: 280px;
+  max-height: 480px;
+}
+
+.question-card-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.question-card-body {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #111827;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 10px;
+}
+
+.answer-area {
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.answer-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.answer-input {
+  width: 100%;
+  min-height: 80px;
+  max-height: 140px;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  padding: 8px 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.answer-input:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.4);
+}
+
+/* 错误提示 */
+.error-hint {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+
+/* 自定义滚动条 */
+.chat-window::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-window::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-window::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+/* 聊天气泡 */
+.msg {
+  max-width: 80%;
+  padding: 9px 11px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* 用户消息：右侧蓝绿渐变气泡 */
+.msg-user {
+  margin-left: auto;
+  background: linear-gradient(135deg, #22c55e, #0ea5e9, #6366f1);
+  color: #f9fafb;
+  box-shadow:
+    0 12px 24px rgba(56, 189, 248, 0.45),
+    0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+/* 机器人消息：左侧浅灰卡片 */
+.msg-bot {
+  margin-right: auto;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+/* 机器人消息中的链接样式 */
+.msg-bot a {
+  color: #2563eb;
+  text-decoration: none;
+}
+.msg-bot a:hover {
+  text-decoration: underline;
+}
+
+/* ===== 输入区域 ===== */
+
+.input-row {
+  margin-top: 12px;
+  display: flex;
+  /* ⭐ 改成横向排 + 反向，把按钮这块放在最左边 */
+  flex-direction: row-reverse;
+  /* 垂直方向居中，让按钮和“题型/数量”在同一水平线上 */
+  align-items: center;
+  gap: 10px;
+}
+
+
+/* Source 开关行 */
+.source-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  flex: 1;                /* ⭐ 让 “题型/数量” 这一块撑满右侧空间 */
+}
+
+
+.source-label {
+  opacity: 0.9;
+}
+
+/* 滑动开关整体 */
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input {
+  display: none;
+}
+
+/* 背景轨道：浅色玻璃感 */
+.toggle-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 200px;
+  padding: 3px 4px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(148, 163, 184, 0.3);
+  overflow: hidden;
+}
+
+/* 滑块：彩色渐变 */
+.toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 96px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #0ea5e9, #6366f1);
+  box-shadow: 0 10px 24px rgba(56, 189, 248, 0.45);
+  transition: transform 0.22s ease;
+}
+
+/* 文本 */
+.toggle-text {
+  position: relative;
+  z-index: 1;
+  width: 50%;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.toggle-text.left {
+  padding-left: 4px;
+}
+
+.toggle-text.right {
+  padding-right: 4px;
+}
+
+/* 选中 Scholar 时滑块右移 + 文本高亮 */
+.toggle input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(96px);
+}
+
+.toggle input:not(:checked) + .toggle-track .toggle-text.left {
+  color: #111827;
+}
+.toggle input:checked + .toggle-track .toggle-text.right {
+  color: #111827;
+}
+
+/* 文本输入 + 发送按钮 */
+.textarea-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+#user-input {
+  flex: 1;
+  min-height: 60px;
+  max-height: 140px;
+  resize: vertical;
+  padding: 9px 11px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+}
+
+#user-input::placeholder {
+  color: #9ca3af;
+}
+
+#user-input:focus {
+  border-color: #2563eb;
+  box-shadow:
+    0 0 0 1px #2563eb,
+    0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+/* 发送按钮：渐变 + 轻微阴影 */
+#send-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(135deg, #22c55e, #0ea5e9, #6366f1);
+  box-shadow:
+    0 8px 20px rgba(56, 189, 248, 0.4),
+    0 0 0 1px rgba(15, 23, 42, 0.15);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+}
+
+#send-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+#send-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 12px rgba(56, 189, 248, 0.3),
+    0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+#send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== 右侧：知识库面板 ===== */
+
+.right-panel {
+  /* 原：grid-column: 1;  ❌ 改成区域名 */
+  grid-area: right;
+
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.02);
+  font-size: 14px;
+}
+
+/* 给 "Knowledge Base" 部分添加边框样式 */
+.bordered-box {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.right-panel h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.hint {
+  margin: 6px 0 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.hint code {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+/* 上传区域 */
+.upload-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+#file-input {
+  font-size: 13px;
+  color: #374151;
+}
+
+#upload-btn {
+  width: 100%;
+  padding: 7px 0;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow:
+    0 10px 22px rgba(34, 197, 94, 0.4),
+    0 0 0 1px rgba(15, 23, 42, 0.12);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+}
+
+#upload-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+#upload-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 12px rgba(34, 197, 94, 0.35),
+    0 0 0 1px rgba(15, 23, 42, 0.16);
+}
+
+/* === 过往试卷上传区：沿用 Knowledge Base 的样式 === */
+
+#past-exam-file-input {
+  font-size: 13px;
+  color: #374151;
+}
+
+#past-exam-upload-btn {
+  width: 100%;
+  padding: 7px 0;
+  border: none;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #0ea5e9, #22c55e);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow:
+    0 10px 25px rgba(34, 197, 94, 0.35),
+    0 0 0 1px rgba(15, 23, 42, 0.12);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+}
+
+#past-exam-upload-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+#past-exam-upload-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 12px rgba(34, 197, 94, 0.35),
+    0 0 0 1px rgba(15, 23, 42, 0.16);
+}
+
+
+#upload-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.upload-result {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #4b5563;
+  white-space: pre-wrap;
+}
+
+/* 小提示卡片 */
+.tip-box {
+  margin-top: 16px;
+  padding: 10px 10px 10px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.tip-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #111827;
+}
+
+.tip-box ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.tip-box li + li {
+  margin-top: 4px;
+}
+
+/* ⭐ 题目提交与批改结果区域 */
+.card-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;      /* ⭐ 改成纵向排列 */
+  align-items: flex-start;
+  gap: 8px;                    /* 上下间距稍微小一点 */
+  justify-content: flex-start;
+}
+
+/* 让 “Got it / Not clear / Detailed Explanation” 三个按钮一行排列并留间距 */
+.understand-row {
+  display: flex;
+  flex-wrap: wrap;      /* 一行放不下时自动换行 */
+  gap: 8px;             /* 三个按钮之间的水平/垂直间隔 */
+  align-items: center;
+}
+
+
+/* === 情景迁移练习区域 === */
+.scenario-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scenario-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.scenario-desc {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.scenario-btn {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #22c55e, #0ea5e9);
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.scenario-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(34, 197, 94, 0.35);
+}
+
+.scenario-btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
+}
+
+.scenario-question-box {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #111827;
+  white-space: pre-wrap;
+}
+
+.scenario-answer-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.scenario-answer-input {
+  width: 100%;
+  min-height: 70px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.scenario-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* Scenario Practice 弹窗里的 “Submit Answer” 按钮 */
+.scenario-submit-btn {
+  padding: 6px 12px;              /* 和右边两个按钮保持一致 */
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #ffffff;
+  font-size: 13px;                /* 和 I Understand / I Don't Understand 一样 */
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+
+.scenario-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.4);
+}
+
+.scenario-submit-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: default;
+}
+
+.scenario-grade-result {
+  flex: 1;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+/* 底部导航中间区域：竖向排列“反馈 + 情景迁移入口” */
+.exam-nav-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 底部导航右侧：让“下一题”和“问卷填写”上下排列，靠右对齐 */
+/* 底部导航右侧：让“下一题”和“问卷填写”上下排列，靠右对齐 */
+.exam-nav-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Start Questionnaire 按钮：更明显的渐变色 + 向下挪一点 */
+.survey-btn {
+  margin-top: 22px;                 /* ⬅ 往下挪一点，接近右下角 */
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #f97316, #ec4899); /* 橙 → 粉 渐变 */
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.survey-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(236, 72, 153, 0.45);
+}
+
+
+
+
+/* 情景迁移入口在底部时去掉题卡里的虚线分割线，并居中 */
+.scenario-entry-inline {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  align-items: center;
+  text-align: center;
+}
+
+.scenario-entry-inline .scenario-desc {
+  max-width: 560px;
+}
+
+.scenario-entry-inline .scenario-btn {
+  align-self: center;
+}
+
+
+/* ===========================
+   📚 过往试卷题库样式
+   =========================== */
+
+.exam-db-box {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.exam-db-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.exam-db-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.exam-db-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.exam-db-input textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.exam-db-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.exam-db-input-row label {
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.exam-db-input-row input,
+.exam-db-input-row select {
+  margin-left: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
+}
+
+.exam-db-input-row button {
+  margin-left: auto;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  border: none;
+  background: #0ea5e9;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.exam-db-input-row button:hover {
+  background: #0284c7;
+}
+
+.exam-db-list {
+  margin-top: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 8px;
+}
+
+.exam-db-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e7eb;
+}
+
+/* 过往试卷题库：每道题头部一行 = [勾选框] + [题干] */
+.exam-db-item-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* 过往试卷题目前面的小方格 */
+.exam-db-item-header .past-exam-checkbox {
+  margin-top: 2px;
+  accent-color: #0ea5e9;  /* 小蓝色方格，和上面知识库一致 */
+  cursor: pointer;
+}
+
+
+.exam-db-text {
+  font-size: 12px;
+  color: #111827;
+}
+
+.exam-db-meta-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.exam-db-delete-btn {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.exam-db-delete-btn:hover {
+  background: #fecaca;
+}
+
+
+.submit-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #4f46e5, #22c55e);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: default;
+}
+
+/* 为按钮添加顶部间距 */
+/* 为按钮添加顶部间距（Got it / Not clear / Detailed Explanation 共用） */
+.understand-btn,
+.dont-understand-btn,
+.explain-btn {
+  margin-top: 20px;  /* 增加按钮顶部的间距 */
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  background: #eef2ff;
+  color: #4b5563;
+  transition: background-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+/* Ask AI 按钮：蓝绿色渐变，与其他按钮风格一致 */
+.ask-ai-btn {
+  margin-top: 20px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9); /* 蓝绿渐变 */
+  color: #ffffff;
+  transition: background-color 0.12s ease, transform 0.12s ease,
+    box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.ask-ai-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.45);
+}
+
+.ask-ai-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+
+
+/* ⭐ 为“我理解了 / 我没理解”按钮上色，便于学生快速分辨 */
+.understand-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a); /* 绿色渐变 */
+  color: #ffffff;
+}
+
+.dont-understand-btn {
+  background: linear-gradient(135deg, #f97316, #ef4444); /* 橙红色渐变 */
+  color: #ffffff;
+}
+
+
+.understand-btn:hover:not(:disabled),
+.dont-understand-btn:hover:not(:disabled) {
+  background: #e0e7ff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(148, 163, 184, 0.35);
+}
+
+.understand-btn:disabled,
+.dont-understand-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ⭐ Detailed Explanation 按钮：柔和的黄色渐变 */
+.explain-btn {
+  background: linear-gradient(135deg, #fde68a, #fbbf24);  /* 柔和黄 → 稍深黄 */
+  color: #78350f;                                         /* 深一点的棕色文字，易读 */
+}
+
+/* hover 效果：轻微提亮 + 阴影 */
+.explain-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(250, 204, 21, 0.45);
+}
+
+/* 禁用态 */
+.explain-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* 精讲模式文本区域 */
+.explain-detail {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef9c3;
+  border: 1px dashed #facc15;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #854d0e;
+  white-space: pre-wrap;
+}
+
+.grade-result {
+  flex: 1;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.4;
+  margin-top: 4px;   /* ⭐ 和“提交答案”之间加一点距 */
+  white-space: pre-wrap; /* 保留换行，方便显示“结果 + 说明 + 参考答案” */
+}
+
+
+/* 给生成的反馈文字添加底部间距 */
+.exam-feedback {
+  margin-top: 12px;  /* 为反馈文字添加顶部间距 */
+  margin-bottom: 20px; /* 增加反馈文字的底部间距 */
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #166534;
+  white-space: pre-wrap;
+}
+
+/* 题目导航 + 个性反馈一行显示（你圈的蓝色区域） */
+.exam-nav-wrapper {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 中间提示文字撑满一行，左右按钮固定宽度 */
+.exam-nav-wrapper .exam-feedback {
+  flex: 1;
+  margin-top: 0; /* 覆盖上面 .exam-feedback 的 margin-top，让这一行更紧凑 */
+}
+
+.bottom-nav-btn {
+  width: auto; /* 使按钮宽度根据文字自动调整 */
+  height: auto; /* 使按钮高度根据文字自动调整 */
+  min-width: 60px; /* 设置最小宽度，避免按钮太小 */
+  min-height: 36px; /* 设置最小高度，确保按钮足够大 */
+  padding: 8px 16px; /* 增加内边距，确保按钮包裹住文字 */
+  font-size: 16px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+  color: #ffffff;
+  display: inline-flex; /* 使用 inline-flex 使按钮根据文字调整大小 */
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+
+
+
+/* ===== 成绩折线图面板 ===== */
+
+.score-panel {
+  margin-top: 12px;
+  padding: 10px 12px 14px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.score-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.score-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.score-panel-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+#score-chart {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+
+/* ===== 向 AI 提问面板 ===== */
+
+.qa-panel {
+  margin-top: 12px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qa-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qa-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.qa-panel-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.qa-chat-window {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qa-placeholder {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* 聊天气泡 */
+.qa-message {
+  max-width: 100%;
+  padding: 6px 9px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.qa-message.qa-user {
+  align-self: flex-end;
+  background: #e0f2fe;
+  color: #0f172a;
+}
+
+.qa-message.qa-assistant {
+  align-self: flex-start;
+  background: #eef2ff;
+  color: #111827;
+}
+
+/* === Follow-up: “Extra Practice / Next Question” 按钮 === */
+.qa-options-row {
+  margin-top: 8px;
+  padding: 0;
+  background: transparent;        /* 不要气泡背景，只保留按钮 */
+  border-radius: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;                       /* 两个按钮之间留一点间距 */
+}
+
+/* 基础按钮样式：和 understand-btn 一样的圆角 + 渐变 */
+.qa-option-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #22c55e, #16a34a); /* 绿色渐变，和 “Got it” 一致 */
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(34, 197, 94, 0.35);
+  transition:
+    background-color 0.12s ease,
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease;
+}
+
+/* 次级按钮：用和其它导航按钮类似的蓝绿色渐变 */
+.qa-option-btn.qa-option-btn-secondary {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+}
+
+/* hover & disabled 效果 */
+.qa-option-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(148, 163, 184, 0.35);
+}
+
+.qa-option-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+
+/* 输入行稍微留一点间距 */
+.qa-input-row {
+  margin-top: 6px;
+}
+
+/* QA 输入框和按钮的样式，参考出题的 user-input / send-btn */
+#qa-input {
+  flex: 1;
+  min-height: 50px;
+  max-height: 120px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 14px;
+  color: #111827;
+  outline: none;
+}
+
+#qa-input::placeholder {
+  color: #9ca3af;
+}
+
+#qa-input:focus {
+  border-color: #2563eb;
+  box-shadow:
+    0 0 0 1px #2563eb,
+    0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+#qa-send-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1, #0ea5e9);
+  box-shadow:
+    0 8px 20px rgba(37, 99, 235, 0.25);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.15s;
+}
+
+#qa-send-btn:hover:enabled {
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 25px rgba(37, 99, 235, 0.35);
+}
+
+#qa-send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ===== 情景迁移练习：全屏弹窗 ===== */
+.scenario-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scenario-modal.hidden {
+  display: none;
+}
+
+.scenario-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.scenario-modal-dialog {
+  position: relative;
+  width: min(780px, 96%);
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.scenario-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.scenario-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.scenario-close-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  color: #6b7280;
+}
+
+.scenario-close-btn:hover {
+  color: #111827;
+}
+
+.scenario-modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.scenario-modal-question {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #111827;
+  white-space: pre-wrap;
+}
+
+.scenario-modal-answer-block {
+  margin-top: 4px;
+}
+
+.scenario-modal-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 让弹窗里的四个按钮高度完全一致（去掉额外的 margin-top） */
+.scenario-modal-actions .scenario-submit-btn,
+.scenario-modal-actions .scenario-next-btn,
+.scenario-modal-actions .understand-btn,
+.scenario-modal-actions .dont-understand-btn {
+  margin-top: 0;       /* 覆盖全局的 20px */
+  padding: 6px 12px;   /* 与左右按钮统一 */
+  font-size: 13px;
+}
+
+
+/* “再来一题” 按钮，沿用渐变风格 */
+.scenario-next-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.scenario-next-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.scenario-next-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+  cursor: default;
+}
+
+/* 情景题 QA 输入框和按钮样式，参考原来的 QA 面板 */
+#scenario-qa-input {
+  flex: 1;
+  min-height: 50px;
+  max-height: 120px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 14px;
+  color: #111827;
+  outline: none;
+}
+
+#scenario-qa-input::placeholder {
+  color: #9ca3af;
+}
+
+#scenario-qa-input:focus {
+  border-color: #2563eb;
+  box-shadow:
+    0 0 0 1px #2563eb,
+    0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+#scenario-qa-send-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1, #0ea5e9);
+  box-shadow:
+    0 8px 20px rgba(37, 99, 235, 0.25);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.15s;
+}
+
+#scenario-qa-send-btn:hover:enabled {
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 25px rgba(37, 99, 235, 0.35);
+}
+
+#scenario-qa-send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+
+/* ===========================
+   📁 文献选择 UI 美化
+   =========================== */
+
+.material-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.material-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+/* 只对文件名做省略号，让右侧垃圾桶始终可见 */
+.material-list .material-name {
+  flex: 1;          /* 占满中间这块空间 */
+  min-width: 0;     /* 让 text-overflow 生效的关键 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+.material-delete-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  color: #9ca3af;
+}
+
+/* Hover 发光效果 */
+.material-list label:hover {
+  background: #eefaff;
+  border-color: #60a5fa;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25);
+}
+
+/* 选中时状态变明显 */
+.material-list input:checked + span {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* 让 checkbox 和文字分开渲染，这样可控 */
+.material-list input[type="checkbox"] {
+  accent-color: #0ea5e9;
+  cursor: pointer;
+}
+
+/* 知识库文件卡片右侧的小垃圾桶按钮 */
+.material-delete-btn {
+  margin-left: auto;        /* 把垃圾桶挤到最右边 */
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  color: #9ca3af;           /* 灰色，默认不太显眼 */
+}
+
+.material-delete-btn:hover {
+  color: #ef4444;           /* 悬停时变成红色 */
+  transform: scale(1.05);
+}
+
+
+:root {
+  --ui-btn-bg: linear-gradient(135deg, #22c55e, #0ea5e9, #6366f1);
+  --ui-btn-radius: 10px;
+  --ui-btn-shadow: 0 8px 18px rgba(56, 189, 248, 0.28);
+}
+
+/* Unified button style for question-generation UI */
+#send-btn,
+#upload-btn,
+#past-exam-upload-btn,
+.question-nav-btn,
+.bottom-nav-btn,
+.survey-btn,
+.scenario-btn,
+.submit-btn,
+.understand-btn,
+.dont-understand-btn,
+.explain-btn,
+.ask-ai-btn,
+#qa-send-btn,
+#scenario-qa-send-btn,
+.scenario-submit-btn,
+.scenario-next-btn,
+.qa-option-btn,
+.qa-option-btn.qa-option-btn-secondary,
+.small-btn {
+  border-radius: var(--ui-btn-radius) !important;
+  border: none !important;
+  background: var(--ui-btn-bg) !important;
+  color: #ffffff !important;
+  box-shadow: var(--ui-btn-shadow) !important;
+}
+
+#send-btn:hover,
+#upload-btn:hover,
+#past-exam-upload-btn:hover,
+.question-nav-btn:hover,
+.bottom-nav-btn:hover,
+.survey-btn:hover,
+.scenario-btn:hover,
+.submit-btn:hover,
+.understand-btn:hover,
+.dont-understand-btn:hover,
+.explain-btn:hover,
+.ask-ai-btn:hover,
+#qa-send-btn:hover,
+#scenario-qa-send-btn:hover,
+.scenario-submit-btn:hover,
+.scenario-next-btn:hover,
+.qa-option-btn:hover,
+.small-btn:hover {
+  filter: brightness(1.06);
+}
+
+#send-btn:disabled,
+#upload-btn:disabled,
+#past-exam-upload-btn:disabled,
+.question-nav-btn:disabled,
+.bottom-nav-btn:disabled,
+.scenario-btn:disabled,
+.submit-btn:disabled,
+.understand-btn:disabled,
+.dont-understand-btn:disabled,
+.explain-btn:disabled,
+.ask-ai-btn:disabled,
+#qa-send-btn:disabled,
+#scenario-qa-send-btn:disabled,
+.scenario-submit-btn:disabled,
+.scenario-next-btn:disabled,
+.qa-option-btn:disabled,
+.small-btn:disabled {
+  opacity: 0.6;
+  box-shadow: none !important;
+}
+
+/* Keep delete actions distinguishable */
+.material-delete-btn,
+.exam-db-delete-btn {
+  background: transparent !important;
+  color: #ef4444 !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+/* ===========================
+   Button System 2.0 (Exam UI)
+   - Unified rounded-rectangle style
+   - Consistent cyan/green/indigo theme
+   =========================== */
+:root {
+  --btn-radius: 12px;
+  --btn-height: 40px;
+  --btn-font-size: 13px;
+  --btn-font-weight: 600;
+
+  --btn-primary-bg: linear-gradient(135deg, #22c55e 0%, #0ea5e9 55%, #6366f1 100%);
+  --btn-primary-shadow: 0 8px 20px rgba(14, 165, 233, 0.28);
+
+  --btn-secondary-bg: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  --btn-secondary-shadow: 0 8px 18px rgba(37, 99, 235, 0.26);
+
+  --btn-neutral-bg: #f8fafc;
+  --btn-neutral-text: #334155;
+  --btn-neutral-border: #cbd5e1;
+
+  --btn-danger-bg: #fef2f2;
+  --btn-danger-text: #b91c1c;
+  --btn-danger-border: #fecaca;
+}
+
+/* Common button shape */
+#send-btn,
+#upload-btn,
+#past-exam-upload-btn,
+.submit-btn,
+.understand-btn,
+.dont-understand-btn,
+.explain-btn,
+.ask-ai-btn,
+#qa-send-btn,
+#scenario-qa-send-btn,
+.scenario-submit-btn,
+.scenario-next-btn,
+.scenario-btn,
+.question-nav-btn,
+.bottom-nav-btn,
+.survey-btn,
+.qa-option-btn,
+.qa-option-btn.qa-option-btn-secondary,
+.small-btn,
+.logout-btn {
+  border-radius: var(--btn-radius) !important;
+  border: none !important;
+  min-height: var(--btn-height);
+  padding: 8px 14px !important;
+  font-size: var(--btn-font-size) !important;
+  font-weight: var(--btn-font-weight) !important;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
+}
+
+/* Primary themed actions */
+#send-btn,
+#upload-btn,
+#past-exam-upload-btn,
+.submit-btn,
+#qa-send-btn,
+#scenario-qa-send-btn,
+.scenario-submit-btn,
+.ask-ai-btn,
+.scenario-btn,
+.survey-btn,
+.logout-btn {
+  background: var(--btn-primary-bg) !important;
+  color: #ffffff !important;
+  box-shadow: var(--btn-primary-shadow) !important;
+}
+
+/* Secondary themed actions */
+.understand-btn,
+.dont-understand-btn,
+.explain-btn,
+.scenario-next-btn,
+.question-nav-btn,
+.bottom-nav-btn,
+.qa-option-btn,
+.qa-option-btn.qa-option-btn-secondary {
+  background: var(--btn-secondary-bg) !important;
+  color: #ffffff !important;
+  box-shadow: var(--btn-secondary-shadow) !important;
+}
+
+/* Neutral utility actions */
+.small-btn {
+  background: var(--btn-neutral-bg) !important;
+  color: var(--btn-neutral-text) !important;
+  border: 1px solid var(--btn-neutral-border) !important;
+  box-shadow: none !important;
+}
+
+/* Make nav buttons rectangular (not circles) */
+.question-nav-btn,
+.bottom-nav-btn {
+  width: auto !important;
+  min-width: 116px !important;
+  height: var(--btn-height) !important;
+}
+
+/* Hover / active / disabled */
+#send-btn:hover,
+#upload-btn:hover,
+#past-exam-upload-btn:hover,
+.submit-btn:hover,
+.understand-btn:hover,
+.dont-understand-btn:hover,
+.explain-btn:hover,
+.ask-ai-btn:hover,
+#qa-send-btn:hover,
+#scenario-qa-send-btn:hover,
+.scenario-submit-btn:hover,
+.scenario-next-btn:hover,
+.scenario-btn:hover,
+.question-nav-btn:hover,
+.bottom-nav-btn:hover,
+.survey-btn:hover,
+.qa-option-btn:hover,
+.small-btn:hover,
+.logout-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+#send-btn:active,
+#upload-btn:active,
+#past-exam-upload-btn:active,
+.submit-btn:active,
+.understand-btn:active,
+.dont-understand-btn:active,
+.explain-btn:active,
+.ask-ai-btn:active,
+#qa-send-btn:active,
+#scenario-qa-send-btn:active,
+.scenario-submit-btn:active,
+.scenario-next-btn:active,
+.scenario-btn:active,
+.question-nav-btn:active,
+.bottom-nav-btn:active,
+.survey-btn:active,
+.qa-option-btn:active,
+.small-btn:active,
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+#send-btn:disabled,
+#upload-btn:disabled,
+#past-exam-upload-btn:disabled,
+.submit-btn:disabled,
+.understand-btn:disabled,
+.dont-understand-btn:disabled,
+.explain-btn:disabled,
+.ask-ai-btn:disabled,
+#qa-send-btn:disabled,
+#scenario-qa-send-btn:disabled,
+.scenario-submit-btn:disabled,
+.scenario-next-btn:disabled,
+.scenario-btn:disabled,
+.question-nav-btn:disabled,
+.bottom-nav-btn:disabled,
+.survey-btn:disabled,
+.qa-option-btn:disabled,
+.small-btn:disabled,
+.logout-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  transform: none;
+}
+
+/* Keep delete-style actions clearly dangerous */
+.material-delete-btn,
+.exam-db-delete-btn {
+  border-radius: 8px !important;
+  border: 1px solid var(--btn-danger-border) !important;
+  background: var(--btn-danger-bg) !important;
+  color: var(--btn-danger-text) !important;
+  box-shadow: none !important;
+  min-height: 30px;
+  padding: 4px 8px !important;
+}
+
+.material-delete-btn:hover,
+.exam-db-delete-btn:hover {
+  filter: brightness(0.98);
+}
+
+.topbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang-toggle-btn {
+  margin-left: auto;
+  min-width: 66px;
+  height: 34px;
+  border-radius: 10px !important;
+}
+/* ===========================
+   Layout Fix: Last/Next same baseline
+   =========================== */
+.exam-nav-wrapper {
+  display: grid !important;
+  grid-template-columns: auto 1fr auto;
+  align-items: start !important;
+  column-gap: 12px;
+}
+
+.exam-nav-center {
+  align-items: stretch !important;
+}
+
+/* Keep Last and Next on the exact same horizontal line */
+#exam-prev-btn,
+#exam-next-btn {
+  margin-top: 0 !important;
+  align-self: start;
+  min-width: 132px !important;
+  height: 40px !important;
+}
+
+.exam-nav-right {
+  align-items: flex-end !important;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+/* Prevent questionnaire button from pushing Next button down visually */
+.survey-btn {
+  margin-top: 0 !important;
+  min-width: 132px;
+  height: 40px;
+}
+
+/* ===========================
+   Material List Unified Format
+   =========================== */
+.material-list-box {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.material-list-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.material-list {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.material-item {
+  display: grid !important;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #dbe4ef;
+  background: #ffffff;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.material-item:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 10px rgba(14, 165, 233, 0.15);
+  background: #f8fdff;
+}
+
+.material-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #0ea5e9;
+}
+
+.material-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.material-list-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.material-list-actions .small-btn {
+  min-width: 92px;
+  height: 36px;
+  border-radius: 10px !important;
+}
+/* ===========================
+   Button Theme 3.0 - Fresh Light UI
+   =========================== */
+:root {
+  --btn-radius-3: 12px;
+  --btn-h-3: 40px;
+  --btn-font-3: 13px;
+  --btn-weight-3: 600;
+
+  --btn-primary-grad: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 55%, #22c55e 100%);
+  --btn-primary-shadow: 0 10px 20px rgba(20, 184, 166, 0.28);
+
+  --btn-accent-grad: linear-gradient(135deg, #38bdf8 0%, #06b6d4 100%);
+  --btn-accent-shadow: 0 8px 16px rgba(14, 165, 233, 0.25);
+
+  --btn-surface-bg: #f8fafc;
+  --btn-surface-border: #cbd5e1;
+  --btn-surface-text: #334155;
+
+  --btn-success-grad: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  --btn-success-shadow: 0 8px 16px rgba(34, 197, 94, 0.25);
+
+  --btn-warning-grad: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  --btn-warning-shadow: 0 8px 16px rgba(249, 115, 22, 0.25);
+
+  --btn-danger-bg-3: #fef2f2;
+  --btn-danger-border-3: #fecaca;
+  --btn-danger-text-3: #b91c1c;
+}
+
+/* Base shape */
+#send-btn,
+#upload-btn,
+#past-exam-upload-btn,
+.submit-btn,
+#qa-send-btn,
+#scenario-qa-send-btn,
+.scenario-submit-btn,
+.scenario-btn,
+.survey-btn,
+.logout-btn,
+.question-nav-btn,
+.bottom-nav-btn,
+.scenario-next-btn,
+.ask-ai-btn,
+.explain-btn,
+.understand-btn,
+.dont-understand-btn,
+.qa-option-btn,
+.small-btn,
+.auth-submit-btn,
+.auth-tab-btn {
+  border-radius: var(--btn-radius-3) !important;
+  min-height: var(--btn-h-3);
+  padding: 8px 14px !important;
+  font-size: var(--btn-font-3) !important;
+  font-weight: var(--btn-weight-3) !important;
+  border: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
+}
+
+/* Primary CTAs */
+#send-btn,
+#upload-btn,
+#past-exam-upload-btn,
+.submit-btn,
+#qa-send-btn,
+#scenario-qa-send-btn,
+.scenario-submit-btn,
+.auth-submit-btn {
+  background: var(--btn-primary-grad) !important;
+  color: #fff !important;
+  box-shadow: var(--btn-primary-shadow) !important;
+}
+
+/* Accent actions */
+.scenario-btn,
+.survey-btn,
+.ask-ai-btn,
+.qa-option-btn,
+.logout-btn {
+  background: var(--btn-accent-grad) !important;
+  color: #fff !important;
+  box-shadow: var(--btn-accent-shadow) !important;
+}
+
+/* Positive confirmation */
+.understand-btn {
+  background: var(--btn-success-grad) !important;
+  color: #fff !important;
+  box-shadow: var(--btn-success-shadow) !important;
+}
+
+/* Warning / attention */
+.dont-understand-btn {
+  background: var(--btn-warning-grad) !important;
+  color: #fff !important;
+  box-shadow: var(--btn-warning-shadow) !important;
+}
+
+/* Secondary neutral controls */
+.question-nav-btn,
+.bottom-nav-btn,
+.scenario-next-btn,
+.explain-btn,
+.small-btn,
+.auth-tab-btn {
+  background: var(--btn-surface-bg) !important;
+  color: var(--btn-surface-text) !important;
+  border: 1px solid var(--btn-surface-border) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Active auth tab = themed */
+.auth-tab-btn.active {
+  background: var(--btn-primary-grad) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: var(--btn-primary-shadow) !important;
+}
+
+/* Danger actions remain explicit */
+.material-delete-btn,
+.exam-db-delete-btn {
+  background: var(--btn-danger-bg-3) !important;
+  border: 1px solid var(--btn-danger-border-3) !important;
+  color: var(--btn-danger-text-3) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+/* Interactions */
+#send-btn:hover,
+#upload-btn:hover,
+#past-exam-upload-btn:hover,
+.submit-btn:hover,
+#qa-send-btn:hover,
+#scenario-qa-send-btn:hover,
+.scenario-submit-btn:hover,
+.scenario-btn:hover,
+.survey-btn:hover,
+.logout-btn:hover,
+.question-nav-btn:hover,
+.bottom-nav-btn:hover,
+.scenario-next-btn:hover,
+.ask-ai-btn:hover,
+.explain-btn:hover,
+.understand-btn:hover,
+.dont-understand-btn:hover,
+.qa-option-btn:hover,
+.small-btn:hover,
+.auth-submit-btn:hover,
+.auth-tab-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+#send-btn:disabled,
+#upload-btn:disabled,
+#past-exam-upload-btn:disabled,
+.submit-btn:disabled,
+#qa-send-btn:disabled,
+#scenario-qa-send-btn:disabled,
+.scenario-submit-btn:disabled,
+.scenario-btn:disabled,
+.survey-btn:disabled,
+.logout-btn:disabled,
+.question-nav-btn:disabled,
+.bottom-nav-btn:disabled,
+.scenario-next-btn:disabled,
+.ask-ai-btn:disabled,
+.explain-btn:disabled,
+.understand-btn:disabled,
+.dont-understand-btn:disabled,
+.qa-option-btn:disabled,
+.small-btn:disabled,
+.auth-submit-btn:disabled,
+.auth-tab-btn:disabled {
+  opacity: 0.58;
+  box-shadow: none !important;
+  transform: none;
+}

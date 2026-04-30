@@ -1,0 +1,8 @@
+🔧 正在加载环境变量...
+⚠️ 未找到 Tesseract，可继续运行，但 OCR 功能不可用。
+✅ 已加载 OPENAI_API_KEY。
+⚠️ DB init failed: connection to server at "127.0.0.1", port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+ * Serving Flask app 'app'
+ * Debug mode: on
