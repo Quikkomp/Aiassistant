@@ -276,13 +276,114 @@ function ensureLangToggleButton() {
   let btn = document.getElementById("lang-toggle-btn");
   if (btn) return btn;
 
-  const topbar = document.querySelector(".topbar");
-  if (!topbar) return null;
+  const topbarRight = document.querySelector(".topbar-right");
+  if (!topbarRight) return null;
   btn = document.createElement("button");
   btn.id = "lang-toggle-btn";
   btn.className = "small-btn lang-toggle-btn";
-  topbar.appendChild(btn);
+  topbarRight.appendChild(btn);
   return btn;
+}
+
+function updateAccountAvatar(username) {
+  const avatar = document.getElementById("account-avatar");
+  if (!avatar) return;
+  const initial = (username || "").trim().charAt(0).toUpperCase();
+  avatar.textContent = initial || "U";
+}
+
+function applyAuthI18n() {
+  const zh = currentLang === "zh";
+  const loginCopy = document.querySelector(".auth-copy-login");
+  const registerCopy = document.querySelector(".auth-copy-register");
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+
+  if (loginCopy) {
+    loginCopy.querySelector(".auth-kicker").innerText = zh ? "EXERCISE AGENT 入口" : "EXERCISE AGENT ACCESS";
+    loginCopy.querySelector("h1").innerText = zh ? "欢迎回到 Exercise Agent。" : "Welcome back to Exercise Agent.";
+    const items = loginCopy.querySelectorAll(".auth-benefits div");
+    const text = zh
+      ? [
+          ["练习历史", "回到之前生成的题目、答案、分数和反馈记录。"],
+          ["个人学习空间", "集中管理上传资料、题库、练习和 AI 反馈。"],
+          ["智能出题", "基于课程文件和模拟题生成有针对性的练习。"],
+          ["安全账户", "保存学习进度，并保护你上传的学习内容。"],
+        ]
+      : [
+          ["Saved practice history", "Return to generated questions, answers, scores, and feedback from earlier sessions."],
+          ["Personal study workspace", "Manage uploaded materials, question banks, exam practice, and AI feedback in one place."],
+          ["Question generation", "Create targeted exercises from your own course files and selected model questions."],
+          ["Secure account", "Keep your learning progress connected while protecting your uploaded study content."],
+        ];
+    items.forEach((item, idx) => {
+      if (!text[idx]) return;
+      item.querySelector("strong").innerText = text[idx][0];
+      item.querySelector("span").innerText = text[idx][1];
+    });
+  }
+
+  if (registerCopy) {
+    registerCopy.querySelector(".auth-kicker").innerText = zh ? "创建账户" : "CREATE AN ACCOUNT";
+    registerCopy.querySelector("h1").innerText = zh ? "开始使用 Exercise Agent 练习。" : "Start practicing with Exercise Agent.";
+    const items = registerCopy.querySelectorAll(".auth-benefits div");
+    const text = zh
+      ? [
+          ["建立练习空间", "为课程资料和生成练习建立个人账户。"],
+          ["从反馈中学习", "每轮练习后查看批改结果、解释和薄弱点。"],
+          ["AI 辅助学习", "使用面向出题、批改和复习指导的智能助手。"],
+          ["随时继续", "注册后，你的资料和练习记录会保留下来。"],
+        ]
+      : [
+          ["Build your practice space", "Set up a personal account for uploaded course resources and generated exercises."],
+          ["Learn from feedback", "Review grading results, explanations, and weak points after each practice round."],
+          ["Study with AI", "Use an agent designed for question generation, answer checking, and guided revision."],
+          ["Continue anytime", "After joining, your saved materials and practice records stay available when you return."],
+        ];
+    items.forEach((item, idx) => {
+      if (!text[idx]) return;
+      item.querySelector("strong").innerText = text[idx][0];
+      item.querySelector("span").innerText = text[idx][1];
+    });
+  }
+
+  if (loginForm) {
+    loginForm.querySelector(".auth-badge").innerText = zh ? "登录" : "LOGIN";
+    loginForm.querySelector("h2").innerText = zh ? "登录 Exercise Agent" : "Sign in to Exercise Agent";
+    loginForm.querySelector("p").innerText = zh ? "使用用户名和密码进入你的练习空间。" : "Use your username and password to access your exercise workspace.";
+    loginForm.querySelector("label").childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
+    document.getElementById("login-username").placeholder = zh ? "输入用户名" : "Enter your username";
+    loginForm.querySelector("#login-username + span").innerText = zh ? "输入你创建账户时使用的用户名。" : "Enter the username you used when creating your account.";
+    loginForm.querySelectorAll("label")[1].childNodes[0].textContent = zh ? "密码\n              " : "Password\n              ";
+    document.getElementById("login-password").placeholder = zh ? "输入密码" : "Enter your password";
+    loginForm.querySelector(".auth-check span").innerText = zh ? "记住我" : "Remember me";
+    loginForm.querySelector(".auth-link").innerText = zh ? "创建账户" : "Create account";
+    loginForm.querySelector(".auth-primary").innerText = zh ? "登录" : "Sign In";
+    loginForm.querySelector(".auth-guest").innerText = zh ? "以访客身份继续" : "Continue as Guest";
+    loginForm.querySelector(".auth-switch").childNodes[0].textContent = zh ? "还没有账户？ " : "Don't have an account? ";
+    loginForm.querySelector(".auth-switch button").innerText = zh ? "创建一个" : "Create one";
+  }
+
+  if (registerForm) {
+    registerForm.querySelector(".auth-badge").innerText = zh ? "注册" : "REGISTER";
+    registerForm.querySelector("h2").innerText = zh ? "创建 Exercise Agent 账户" : "Create your Exercise Agent account";
+    registerForm.querySelector("p").innerText = zh ? "填写表单，创建你的个人练习空间。" : "Complete the form below to create your personal exercise workspace.";
+    const labels = registerForm.querySelectorAll("label");
+    labels[0].childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
+    document.getElementById("register-username").placeholder = zh ? "创建用户名" : "Create a username";
+    registerForm.querySelector("#register-username + span").innerText = zh ? "选择一个用于登录的唯一用户名。" : "Choose a unique username for signing in.";
+    labels[1].childNodes[0].textContent = zh ? "邮箱地址\n              " : "Email address\n              ";
+    document.getElementById("register-email").placeholder = zh ? "输入邮箱" : "Enter your email";
+    registerForm.querySelector("#register-email + span").innerText = zh ? "使用一个你可以访问的邮箱地址。" : "Use an email address you can access.";
+    labels[2].childNodes[0].textContent = zh ? "密码\n                " : "Password\n                ";
+    document.getElementById("register-password").placeholder = zh ? "创建密码" : "Create a password";
+    labels[3].childNodes[0].textContent = zh ? "确认密码\n                " : "Confirm password\n                ";
+    document.getElementById("register-confirm").placeholder = zh ? "再次输入密码" : "Re-enter password";
+    registerForm.querySelector(".terms span").innerText = zh ? "我同意平台条款和隐私说明。" : "I agree to the platform terms and privacy notice.";
+    registerForm.querySelector(".auth-primary").innerText = zh ? "创建账户" : "Create Account";
+    registerForm.querySelector(".auth-switch").childNodes[0].textContent = zh ? "已经有账户？ " : "Already have an account? ";
+    registerForm.querySelector(".auth-switch button").innerText = zh ? "登录" : "Sign in";
+  }
 }
 
 function applyStaticI18n() {
@@ -401,6 +502,9 @@ function applyStaticI18n() {
   if (scenarioQaSub) scenarioQaSub.innerText = zh ? "你可以继续追问，例如：可以换个例子再解释一次吗？" : "You may ask follow-up questions, such as: Could you explain it with another example?";
   const scenarioQaInput = document.getElementById("scenario-qa-input");
   if (scenarioQaInput) scenarioQaInput.placeholder = zh ? "继续追问这个情景题..." : "Ask follow-up questions about this scenario.";
+
+  const guestLoginBtn = document.getElementById("guest-login-btn");
+  if (guestLoginBtn) guestLoginBtn.innerText = zh ? "登录" : "Login";
 }
 
 function setLanguage(lang) {
@@ -408,7 +512,11 @@ function setLanguage(lang) {
   localStorage.setItem(LANG_KEY, currentLang);
   document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
   const btn = ensureLangToggleButton();
-  if (btn) btn.innerText = currentLang === "zh" ? "EN" : "\u4e2d\u6587";
+  const authBtn = document.getElementById("auth-lang-toggle-btn");
+  const label = currentLang === "zh" ? "EN" : "\u4e2d\u6587";
+  if (btn) btn.innerText = label;
+  if (authBtn) authBtn.innerText = label;
+  applyAuthI18n();
   applyStaticI18n();
   renderScoreChart();
   renderQuestionCard();
@@ -1668,11 +1776,11 @@ async function handleDontUnderstand(idx) {
     const qaTitleEl = qaPanel.querySelector(".qa-panel-title");
     const qaSubtitleEl = qaPanel.querySelector(".qa-panel-subtitle");
     if (qaTitleEl) {
-      qaTitleEl.innerText = t("followup_title");
+      qaTitleEl.innerText = currentLang === "zh" ? "继续追问这道题" : "Follow-up Questions";
     }
     if (qaSubtitleEl) {
       qaSubtitleEl.innerText =
-        "You may ask follow-up questions about this problem.";
+        currentLang === "zh" ? "围绕当前题目继续提问，我会结合题目上下文回答。" : "Ask about the current question and I will answer with this problem's context.";
     }
   }
 
@@ -1726,10 +1834,10 @@ async function handleAskAi(idx) {
     const qaTitleEl = qaPanel.querySelector(".qa-panel-title");
     const qaSubtitleEl = qaPanel.querySelector(".qa-panel-subtitle");
     if (qaTitleEl) {
-      qaTitleEl.innerText = "You can Ask Everything";
+      qaTitleEl.innerText = currentLang === "zh" ? "Ask AI" : "Ask AI";
     }
     if (qaSubtitleEl) {
-      qaSubtitleEl.innerText = "Feel free to ask anything here.";
+      qaSubtitleEl.innerText = currentLang === "zh" ? "可以继续提问概念、解题思路或相关知识点。" : "Ask about concepts, reasoning steps, or related knowledge points.";
     }
   }
 
@@ -2153,11 +2261,20 @@ function renderMaterialList(files) {
     span.className = "material-name";
     span.textContent = name;
 
-    // 馃棏 Trash button: delete this file
+    // Trash button: delete this file
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "material-delete-btn";
-    delBtn.innerHTML = "馃棏"; // Small trash icon
+    delBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 6h18"></path>
+        <path d="M8 6V4h8v2"></path>
+        <path d="M6 6l1 15h10l1-15"></path>
+        <path d="M10 10v7"></path>
+        <path d="M14 10v7"></path>
+      </svg>
+    `;
+    delBtn.setAttribute("aria-label", t("delete_file_title"));
     delBtn.title = t("delete_file_title");
 
     delBtn.addEventListener("click", (event) => {
@@ -2687,7 +2804,7 @@ async function uploadPastExamFiles() {
 
 
 // ==========================
-// HeritageHub auth UI
+// Exercise Agent auth UI
 // ==========================
 function setAuthMode(mode) {
   const loginForm = document.getElementById("login-form");
@@ -2709,12 +2826,15 @@ function showApp(username) {
   const page = document.querySelector(".page");
   const accountChip = document.getElementById("account-chip");
   const accountName = document.getElementById("account-name");
+  const guestLoginBtn = document.getElementById("guest-login-btn");
 
   document.body.classList.remove("auth-open", "auth-register");
   if (authScreen) authScreen.classList.add("hidden");
   if (page) page.classList.remove("app-hidden");
   if (accountChip) accountChip.classList.toggle("hidden", !username);
   if (accountName) accountName.textContent = username || "";
+  if (guestLoginBtn) guestLoginBtn.classList.toggle("hidden", !!username);
+  updateAccountAvatar(username);
   refreshKbStats();
   loadPastExamDb();
 }
@@ -2723,11 +2843,13 @@ function showAuth() {
   const authScreen = document.getElementById("auth-screen");
   const page = document.querySelector(".page");
   const accountChip = document.getElementById("account-chip");
+  const guestLoginBtn = document.getElementById("guest-login-btn");
 
   document.body.classList.add("auth-open");
   if (authScreen) authScreen.classList.remove("hidden");
   if (page) page.classList.add("app-hidden");
   if (accountChip) accountChip.classList.add("hidden");
+  if (guestLoginBtn) guestLoginBtn.classList.add("hidden");
   setAuthMode("login");
 }
 
@@ -2832,6 +2954,21 @@ function bindAuthUi() {
       }
     });
   }
+
+  const guestLoginBtn = document.getElementById("guest-login-btn");
+  if (guestLoginBtn) {
+    guestLoginBtn.addEventListener("click", async () => {
+      guestLoginBtn.disabled = true;
+      try {
+        await postAuth("/api/auth/logout");
+        showAuth();
+      } catch (err) {
+        showAuth();
+      } finally {
+        guestLoginBtn.disabled = false;
+      }
+    });
+  }
 }
 
 // 浜嬩欢缁戝畾
@@ -2841,6 +2978,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const langBtn = ensureLangToggleButton();
   if (langBtn) {
     langBtn.addEventListener("click", () => {
+      setLanguage(currentLang === "zh" ? "en" : "zh");
+    });
+  }
+  const authLangBtn = document.getElementById("auth-lang-toggle-btn");
+  if (authLangBtn) {
+    authLangBtn.addEventListener("click", () => {
       setLanguage(currentLang === "zh" ? "en" : "zh");
     });
   }
@@ -2901,7 +3044,9 @@ document.addEventListener("DOMContentLoaded", () => {
   loadScoreHistory();
   renderScoreChart();
   renderQuestionCard();
-  setLanguage("zh");
+  const accountName = document.getElementById("account-name");
+  updateAccountAvatar(accountName ? accountName.textContent : "");
+  setLanguage(localStorage.getItem(LANG_KEY) || "zh");
 });
 
 window.addEventListener("resize", () => {
