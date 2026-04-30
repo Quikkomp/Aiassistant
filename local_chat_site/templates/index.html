@@ -5,14 +5,107 @@
   <title>Local Model Knowledge Base Assistant</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
-<body>
-  <div class="page">
+<body class="{% if not auth.authenticated %}auth-open{% endif %}">
+  <section id="auth-screen" class="auth-screen {% if auth.authenticated %}hidden{% endif %}" aria-label="Account access">
+    <div class="auth-shell">
+      <aside class="auth-visual">
+        <div class="auth-visual-content auth-copy auth-copy-login">
+          <div class="auth-kicker">HERITAGEHUB ACCESS</div>
+          <h1>Welcome back to HeritageHub.</h1>
+          <p>Continue exploring cultural stories, saved resources, and personal study materials from one space.</p>
+          <div class="auth-benefits">
+            <div><strong>Your saved discoveries</strong><span>Return to the resources, practice history, and collections you have explored before.</span></div>
+            <div><strong>Personal workspace</strong><span>Manage your uploaded materials, exam practice, and feedback in one place.</span></div>
+            <div><strong>Contributor access</strong><span>Keep your learning activity connected across sessions.</span></div>
+            <div><strong>Secure account</strong><span>Your account keeps your activity connected while helping protect your content.</span></div>
+          </div>
+        </div>
+
+        <div class="auth-visual-content auth-copy auth-copy-register">
+          <div class="auth-kicker">CREATE AN ACCOUNT</div>
+          <h1>Start your journey with HeritageHub.</h1>
+          <p>Create an account to save discoveries, follow cultural resources, and take part in your learning community.</p>
+          <div class="auth-benefits">
+            <div><strong>Build your profile</strong><span>Set up a personal account for exploring resources and keeping track of your activity.</span></div>
+            <div><strong>Explore as a member</strong><span>Browse materials with a space that belongs to you.</span></div>
+            <div><strong>Join the community</strong><span>Connect with a platform designed for studying and preserving knowledge.</span></div>
+            <div><strong>Contribute later</strong><span>After joining, your saved work stays available when you return.</span></div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="auth-card">
+        <div class="auth-card-inner">
+          <form id="login-form" class="auth-form" autocomplete="on">
+            <div class="auth-badge">LOGIN</div>
+            <h2>Sign in to HeritageHub</h2>
+            <p>Use your username and password to access your HeritageHub account.</p>
+
+            <label>Username
+              <input id="login-username" name="username" type="text" placeholder="Enter your username" autocomplete="username" required />
+              <span>Enter the username you used when creating your account.</span>
+            </label>
+
+            <label>Password
+              <input id="login-password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+            </label>
+
+            <div class="auth-row">
+              <label class="auth-check"><input id="remember-me" type="checkbox" checked /> <span>Remember me</span></label>
+              <button class="auth-link" type="button" data-auth-mode="register">Create account</button>
+            </div>
+
+            <div id="login-message" class="auth-message"></div>
+            <button class="auth-primary" type="submit">Sign In</button>
+            <button id="guest-btn" class="auth-guest" type="button">Continue as Guest</button>
+            <div class="auth-switch">Don't have an account? <button type="button" data-auth-mode="register">Create one</button></div>
+          </form>
+
+          <form id="register-form" class="auth-form hidden" autocomplete="on">
+            <div class="auth-badge">REGISTER</div>
+            <h2>Create your HeritageHub account</h2>
+            <p>Complete the form below to create your personal HeritageHub account.</p>
+
+            <label>Username
+              <input id="register-username" name="username" type="text" placeholder="Create a username" autocomplete="username" required />
+              <span>Choose a unique username for signing in.</span>
+            </label>
+
+            <label>Email address
+              <input id="register-email" name="email" type="email" placeholder="Enter your email" autocomplete="email" required />
+              <span>Use an email address you can access.</span>
+            </label>
+
+            <div class="auth-two">
+              <label>Password
+                <input id="register-password" name="password" type="password" placeholder="Create a password" autocomplete="new-password" required />
+              </label>
+              <label>Confirm password
+                <input id="register-confirm" name="confirm_password" type="password" placeholder="Re-enter password" autocomplete="new-password" required />
+              </label>
+            </div>
+
+            <label class="auth-check terms"><input id="terms-check" type="checkbox" required /> <span>I agree to the platform terms and privacy notice.</span></label>
+            <div id="register-message" class="auth-message"></div>
+            <button class="auth-primary gold" type="submit">Create Account</button>
+            <div class="auth-switch">Already have an account? <button type="button" data-auth-mode="login">Sign in</button></div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <div class="page {% if not auth.authenticated %}app-hidden{% endif %}">
     <header class="topbar">
       <div class="logo">
         <span class="logo-dot"></span>
         Local RAG Studio
       </div>
       <div class="topbar-right">
+        <div id="account-chip" class="account-chip {% if not auth.authenticated %}hidden{% endif %}">
+          <span id="account-name">{{ auth.username or "" }}</span>
+          <button id="logout-btn" class="logout-btn" type="button">Logout</button>
+        </div>
         <div class="kb-info">
           Knowledge Base: <span id="kb-count">0</span> documents
         </div>

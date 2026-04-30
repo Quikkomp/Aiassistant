@@ -1,0 +1,14 @@
+.env
+*.env
+__pycache__/
+*.py[cod]
+*.pyc.*
+
+local_chat_site/.env
+local_chat_site/app_users.sqlite3
+local_chat_site/materials/
+local_chat_site/vector_store/
+local_chat_site/student_logs/
+local_chat_site/literature_cache/
+local_chat_site/exam_db/
+local_chat_site/server.*.log

@@ -1,8 +1,19 @@
 import os
+import re
+import sqlite3
+import sys
 import uuid
 from typing import List
 from flask import Flask, render_template, request, jsonify, session
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except AttributeError:
+    pass
 import rag_agentV3_2 as rag_agent_module  # ✅ 修改为你的文件名
 import psycopg2
 from collections import Counter
@@ -10,9 +21,11 @@ from collections import Counter
 
 # ---------------- 基础配置 ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 # 这里仍然把 materials 当成根目录，后面会在里面按 user_id 创建子目录
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "materials")
 PAST_EXAM_UPLOAD_FOLDER = os.path.join(BASE_DIR, "exam_db", "past_exam_files")
+AUTH_DB_PATH = os.getenv("AUTH_DB_PATH") or os.path.join(BASE_DIR, "app_users.sqlite3")
 
 # ---------------- 数据库配置 ----------------
 DB_DSN = os.getenv("EXAM_DB_DSN")  # 从 .env 中读取
@@ -75,6 +88,16 @@ def init_db():
             );
         """)
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS app_users (
+                id              SERIAL PRIMARY KEY,
+                username        TEXT NOT NULL UNIQUE,
+                email           TEXT NOT NULL UNIQUE,
+                password_hash   TEXT NOT NULL,
+                public_user_id  TEXT NOT NULL UNIQUE,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """)
 
         conn.commit()
         cur.close()
@@ -84,10 +107,61 @@ def init_db():
         # 不要让整个应用挂掉，先打印出来
         print("⚠️ DB init failed:", e)
 
+def get_auth_db_conn():
+    """
+    Auth prefers PostgreSQL, then falls back to a local SQLite file so login/register
+    still work on machines without a running PostgreSQL service.
+    """
+    try:
+        return get_db_conn(), "postgres"
+    except Exception as e:
+        print(f"Auth DB fallback to SQLite: {e}")
+        conn = sqlite3.connect(AUTH_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=OFF;")
+        conn.execute("PRAGMA synchronous=OFF;")
+        return conn, "sqlite"
+
+
+def init_auth_db():
+    conn, db_kind = get_auth_db_conn()
+    cur = conn.cursor()
+    if db_kind == "sqlite":
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS app_users (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                username        TEXT NOT NULL UNIQUE,
+                email           TEXT NOT NULL UNIQUE,
+                password_hash   TEXT NOT NULL,
+                public_user_id  TEXT NOT NULL UNIQUE,
+                created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS app_users (
+                id              SERIAL PRIMARY KEY,
+                username        TEXT NOT NULL UNIQUE,
+                email           TEXT NOT NULL UNIQUE,
+                password_hash   TEXT NOT NULL,
+                public_user_id  TEXT NOT NULL UNIQUE,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def is_unique_violation(exc):
+    return isinstance(exc, psycopg2.errors.UniqueViolation) or isinstance(exc, sqlite3.IntegrityError)
+
+
 app = Flask(__name__)
 # 用于 Flask session（建议在服务器上用环境变量改成更安全的值）
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 init_db()
+init_auth_db()
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PAST_EXAM_UPLOAD_FOLDER, exist_ok=True)
@@ -106,9 +180,36 @@ def get_current_user_id() -> str:
     基于 Flask session 给每个浏览器分配一个稳定的 user_id。
     注意：同一个浏览器 + 不清 cookie 的情况下，user_id 会保持不变。
     """
+    if session.get("auth_user_id"):
+        return session["auth_user_id"]
     if "user_id" not in session:
         session["user_id"] = f"user_{uuid.uuid4().hex[:8]}"
     return session["user_id"]
+
+
+def current_auth_payload():
+    username = session.get("username")
+    if not username:
+        return {"authenticated": False, "username": None}
+    return {"authenticated": True, "username": username}
+
+
+def normalize_username(username: str) -> str:
+    return (username or "").strip().lower()
+
+
+def normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
+
+def validate_auth_payload(username: str, email: str | None, password: str):
+    if not re.fullmatch(r"[a-zA-Z]{3,32}", username or ""):
+        return "Username must be 3-32 characters and can only contain uppercase or lowercase letters."
+    if email is not None and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email or ""):
+        return "Please enter a valid email address."
+    if len(password or "") < 6:
+        return "Password must be at least 6 characters."
+    return None
 
 def save_round_to_db(user_id: str, round_score, all_items):
     """
@@ -313,7 +414,119 @@ def call_local_model(
 # ---------------- 路由 ----------------
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", auth=current_auth_payload())
+
+
+@app.route("/api/auth/status", methods=["GET"])
+def auth_status():
+    return jsonify({"ok": True, **current_auth_payload()})
+
+
+@app.route("/api/auth/register", methods=["POST"])
+def auth_register():
+    data = request.get_json(force=True) or {}
+    username = normalize_username(data.get("username"))
+    email = normalize_email(data.get("email"))
+    password = data.get("password") or ""
+    confirm_password = data.get("confirm_password") or ""
+
+    validation_error = validate_auth_payload(username, email, password)
+    if validation_error:
+        return jsonify({"ok": False, "msg": validation_error}), 400
+    if password != confirm_password:
+        return jsonify({"ok": False, "msg": "Passwords do not match."}), 400
+
+    public_user_id = f"user_{uuid.uuid4().hex[:8]}"
+    password_hash = generate_password_hash(password)
+
+    try:
+        conn, db_kind = get_auth_db_conn()
+        cur = conn.cursor()
+        if db_kind == "sqlite":
+            cur.execute(
+                """
+                INSERT INTO app_users (username, email, password_hash, public_user_id)
+                VALUES (?, ?, ?, ?);
+                """,
+                (username, email, password_hash, public_user_id),
+            )
+        else:
+            cur.execute(
+                """
+                INSERT INTO app_users (username, email, password_hash, public_user_id)
+                VALUES (%s, %s, %s, %s)
+                RETURNING public_user_id;
+                """,
+                (username, email, password_hash, public_user_id),
+            )
+            public_user_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        if is_unique_violation(e):
+            return jsonify({"ok": False, "msg": "Username or email already exists."}), 409
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+    session.clear()
+    session["auth_user_id"] = public_user_id
+    session["username"] = username
+    return jsonify({"ok": True, "username": username})
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    data = request.get_json(force=True) or {}
+    username = normalize_username(data.get("username"))
+    password = data.get("password") or ""
+
+    validation_error = validate_auth_payload(username, None, password)
+    if validation_error:
+        return jsonify({"ok": False, "msg": validation_error}), 400
+
+    try:
+        conn, db_kind = get_auth_db_conn()
+        cur = conn.cursor()
+        placeholder = "?" if db_kind == "sqlite" else "%s"
+        cur.execute(
+            f"""
+            SELECT username, password_hash, public_user_id
+            FROM app_users
+            WHERE username = {placeholder};
+            """,
+            (username,),
+        )
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+    if not user or not check_password_hash(user[1], password):
+        return jsonify({"ok": False, "msg": "Invalid username or password."}), 401
+
+    session.clear()
+    session["username"] = user[0]
+    session["auth_user_id"] = user[2]
+    return jsonify({"ok": True, "username": user[0]})
+
+
+@app.route("/api/auth/guest", methods=["POST"])
+def auth_guest():
+    session.pop("username", None)
+    session.pop("auth_user_id", None)
+    session["guest_mode"] = True
+    get_current_user_id()
+    return jsonify({"ok": True, "guest": True})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    session.clear()
+    return jsonify({"ok": True})
 
 @app.route("/api/material_stats", methods=["GET"])
 def material_stats():

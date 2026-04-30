@@ -11,6 +11,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 import os
+import sys
 import shutil
 import requests
 import json
@@ -19,6 +20,12 @@ from PIL import Image
 import pytesseract
 from pdf2image import convert_from_path
 import threading
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except AttributeError:
+    pass
 
 _USER_BUILD_LOCKS = {}
 _LOCKS_GUARD = threading.Lock()

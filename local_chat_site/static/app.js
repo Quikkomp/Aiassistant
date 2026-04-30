@@ -2259,7 +2259,7 @@ async function loadPastExamDb() {
 
 // Render pastExamQuestions into the right-side list (each question includes a checkbox)
 function renderPastExamList() {
-  const container = document.getElementById("past-exam-list"); // Corresponds to the id in index.html
+  const container = document.getElementById("previous-files-list");
   const countSpan = document.getElementById("past-exam-count");
   if (!container) return;
 
@@ -2686,8 +2686,158 @@ async function uploadPastExamFiles() {
 }
 
 
+// ==========================
+// HeritageHub auth UI
+// ==========================
+function setAuthMode(mode) {
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+  const isRegister = mode === "register";
+
+  document.body.classList.toggle("auth-register", isRegister);
+  if (loginForm) loginForm.classList.toggle("hidden", isRegister);
+  if (registerForm) registerForm.classList.toggle("hidden", !isRegister);
+
+  const loginMsg = document.getElementById("login-message");
+  const registerMsg = document.getElementById("register-message");
+  if (loginMsg) loginMsg.textContent = "";
+  if (registerMsg) registerMsg.textContent = "";
+}
+
+function showApp(username) {
+  const authScreen = document.getElementById("auth-screen");
+  const page = document.querySelector(".page");
+  const accountChip = document.getElementById("account-chip");
+  const accountName = document.getElementById("account-name");
+
+  document.body.classList.remove("auth-open", "auth-register");
+  if (authScreen) authScreen.classList.add("hidden");
+  if (page) page.classList.remove("app-hidden");
+  if (accountChip) accountChip.classList.toggle("hidden", !username);
+  if (accountName) accountName.textContent = username || "";
+  refreshKbStats();
+  loadPastExamDb();
+}
+
+function showAuth() {
+  const authScreen = document.getElementById("auth-screen");
+  const page = document.querySelector(".page");
+  const accountChip = document.getElementById("account-chip");
+
+  document.body.classList.add("auth-open");
+  if (authScreen) authScreen.classList.remove("hidden");
+  if (page) page.classList.add("app-hidden");
+  if (accountChip) accountChip.classList.add("hidden");
+  setAuthMode("login");
+}
+
+async function postAuth(url, body = {}) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    throw new Error(data.msg || "Authentication failed.");
+  }
+  return data;
+}
+
+function setAuthMessage(id, text, success = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text || "";
+  el.classList.toggle("success", !!success);
+}
+
+function bindAuthUi() {
+  document.querySelectorAll("[data-auth-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => setAuthMode(btn.dataset.authMode));
+  });
+
+  const loginForm = document.getElementById("login-form");
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = loginForm.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+      setAuthMessage("login-message", "");
+      try {
+        const data = await postAuth("/api/auth/login", {
+          username: document.getElementById("login-username").value,
+          password: document.getElementById("login-password").value,
+        });
+        setAuthMessage("login-message", "Signed in successfully.", true);
+        showApp(data.username);
+      } catch (err) {
+        setAuthMessage("login-message", err.message);
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const registerForm = document.getElementById("register-form");
+  if (registerForm) {
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = registerForm.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.disabled = true;
+      setAuthMessage("register-message", "");
+      try {
+        const data = await postAuth("/api/auth/register", {
+          username: document.getElementById("register-username").value,
+          email: document.getElementById("register-email").value,
+          password: document.getElementById("register-password").value,
+          confirm_password: document.getElementById("register-confirm").value,
+        });
+        setAuthMessage("register-message", "Account created.", true);
+        showApp(data.username);
+      } catch (err) {
+        setAuthMessage("register-message", err.message);
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const guestBtn = document.getElementById("guest-btn");
+  if (guestBtn) {
+    guestBtn.addEventListener("click", async () => {
+      guestBtn.disabled = true;
+      setAuthMessage("login-message", "");
+      try {
+        await postAuth("/api/auth/guest");
+        showApp("");
+      } catch (err) {
+        setAuthMessage("login-message", err.message);
+      } finally {
+        guestBtn.disabled = false;
+      }
+    });
+  }
+
+  const logoutBtn = document.getElementById("logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      logoutBtn.disabled = true;
+      try {
+        await postAuth("/api/auth/logout");
+        showAuth();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        logoutBtn.disabled = false;
+      }
+    });
+  }
+}
+
 // 浜嬩欢缁戝畾
 document.addEventListener("DOMContentLoaded", () => {
+  bindAuthUi();
+
   const langBtn = ensureLangToggleButton();
   if (langBtn) {
     langBtn.addEventListener("click", () => {
