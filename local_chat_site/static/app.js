@@ -4,6 +4,7 @@ let questionList = [];
 let questionAnswers = [];
 let questionEvaluations = [];
 let currentQuestionIndex = 0;
+let activeQuestionType = "fill_blank";
 let questionExplainStage = [];
 let questionExplainText = [];
 
@@ -301,7 +302,7 @@ function applyAuthI18n() {
 
   if (loginCopy) {
     loginCopy.querySelector(".auth-kicker").innerText = zh ? "EXERCISE AGENT 入口" : "EXERCISE AGENT ACCESS";
-    loginCopy.querySelector("h1").innerText = zh ? "欢迎回到 Exercise Agent。" : "Welcome back to Exercise Agent.";
+    loginCopy.querySelector("h1").innerText = zh ? "欢迎回到 Exercise Agent" : "Welcome back to Exercise Agent";
     const items = loginCopy.querySelectorAll(".auth-benefits div");
     const text = zh
       ? [
@@ -325,7 +326,7 @@ function applyAuthI18n() {
 
   if (registerCopy) {
     registerCopy.querySelector(".auth-kicker").innerText = zh ? "创建账户" : "CREATE AN ACCOUNT";
-    registerCopy.querySelector("h1").innerText = zh ? "开始使用 Exercise Agent 练习。" : "Start practicing with Exercise Agent.";
+    registerCopy.querySelector("h1").innerText = zh ? "开始使用 Exercise Agent 练习" : "Start practicing with Exercise Agent";
     const items = registerCopy.querySelectorAll(".auth-benefits div");
     const text = zh
       ? [
@@ -350,10 +351,10 @@ function applyAuthI18n() {
   if (loginForm) {
     loginForm.querySelector(".auth-badge").innerText = zh ? "登录" : "LOGIN";
     loginForm.querySelector("h2").innerText = zh ? "登录 Exercise Agent" : "Sign in to Exercise Agent";
-    loginForm.querySelector("p").innerText = zh ? "使用用户名和密码进入你的练习空间。" : "Use your username and password to access your exercise workspace.";
+    loginForm.querySelector("p").innerText = zh ? "使用用户名和密码进入你的练习空间" : "Use your username and password to access your exercise workspace";
     loginForm.querySelector("label").childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
     document.getElementById("login-username").placeholder = zh ? "输入用户名" : "Enter your username";
-    loginForm.querySelector("#login-username + span").innerText = zh ? "输入你创建账户时使用的用户名。" : "Enter the username you used when creating your account.";
+    loginForm.querySelector("#login-username + span").innerText = zh ? "输入你创建账户时使用的用户名" : "Enter the username you used when creating your account";
     loginForm.querySelectorAll("label")[1].childNodes[0].textContent = zh ? "密码\n              " : "Password\n              ";
     document.getElementById("login-password").placeholder = zh ? "输入密码" : "Enter your password";
     loginForm.querySelector(".auth-check span").innerText = zh ? "记住我" : "Remember me";
@@ -367,7 +368,7 @@ function applyAuthI18n() {
   if (registerForm) {
     registerForm.querySelector(".auth-badge").innerText = zh ? "注册" : "REGISTER";
     registerForm.querySelector("h2").innerText = zh ? "创建 Exercise Agent 账户" : "Create your Exercise Agent account";
-    registerForm.querySelector("p").innerText = zh ? "填写表单，创建你的个人练习空间。" : "Complete the form below to create your personal exercise workspace.";
+    registerForm.querySelector("p").innerText = zh ? "填写表单，创建你的个人练习空间" : "Complete the form below to create your personal exercise workspace";
     const labels = registerForm.querySelectorAll("label");
     labels[0].childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
     document.getElementById("register-username").placeholder = zh ? "创建用户名" : "Create a username";
@@ -941,7 +942,11 @@ function renderQuestionCard() {
   // 棰樺共
   const body = document.createElement("div");
   body.className = "question-card-body";
-  body.innerText = questionList[idx];
+  if (activeQuestionType === "multiple_choice") {
+    renderMultipleChoiceQuestionBody(body, questionList[idx], idx);
+  } else {
+    body.innerText = questionList[idx];
+  }
 
   // 绛旈鍖哄煙
   const answerArea = document.createElement("div");
@@ -951,22 +956,27 @@ function renderQuestionCard() {
   answerLabel.className = "answer-label";
   answerLabel.innerText = t("your_answer");
 
-  const answerInput = document.createElement("textarea");
-  answerInput.className = "answer-input";
-  answerInput.placeholder = "Write your answer here...";
-  if (questionAnswers[idx]) {
-    answerInput.value = questionAnswers[idx];
+  if (activeQuestionType === "multiple_choice") {
+    answerArea.classList.add("answer-area-hidden");
+  } else {
+    answerArea.appendChild(answerLabel);
+    const answerInput = document.createElement("textarea");
+    answerInput.className = "answer-input";
+    answerInput.placeholder = "Write your answer here...";
+    if (questionAnswers[idx]) {
+      answerInput.value = questionAnswers[idx];
+    }
+    answerInput.addEventListener("input", (e) => {
+      questionAnswers[idx] = e.target.value;
+    });
+    answerArea.appendChild(answerInput);
   }
-  answerInput.addEventListener("input", (e) => {
-    questionAnswers[idx] = e.target.value;
-  });
-
-  answerArea.appendChild(answerLabel);
-  answerArea.appendChild(answerInput);
 
   card.appendChild(header);
   card.appendChild(body);
-  card.appendChild(answerArea);
+  if (activeQuestionType !== "multiple_choice") {
+    card.appendChild(answerArea);
+  }
 
   // ===== 鎸夐挳 + 鎵规敼缁撴灉 =====
   const actions = document.createElement("div");
@@ -1200,6 +1210,109 @@ function renderQuestionCard() {
   }
 }
 
+function setSelectedChoice(group, idx, letter) {
+  questionAnswers[idx] = letter;
+  group.querySelectorAll(".question-choice-btn, .choice-answer-btn").forEach((item) => {
+    const selected = item.dataset.choice === letter || item.textContent.trim() === letter;
+    item.classList.toggle("selected", selected);
+    item.setAttribute("aria-checked", selected ? "true" : "false");
+  });
+}
+
+function renderMultipleChoiceQuestionBody(container, rawText, idx) {
+  const lines = String(rawText || "").split(/\r?\n/);
+  const promptLines = [];
+  const choices = [];
+
+  lines.forEach((line) => {
+    const match = line.match(/^\s*([A-D])\s*[\).:：、]\s*(.+)$/i);
+    if (match) {
+      choices.push({
+        letter: match[1].toUpperCase(),
+        text: match[2].trim(),
+      });
+    } else if (line.trim()) {
+      promptLines.push(line);
+    }
+  });
+
+  if (choices.length < 2) {
+    container.innerText = rawText;
+    container.appendChild(createChoiceAnswerControl(idx));
+    return;
+  }
+
+  const prompt = document.createElement("div");
+  prompt.className = "question-prompt-text";
+  prompt.innerText = promptLines.join("\n");
+  container.appendChild(prompt);
+
+  const group = document.createElement("div");
+  group.className = "question-choice-list";
+  group.setAttribute("role", "radiogroup");
+  group.setAttribute("aria-label", t("your_answer"));
+
+  choices.forEach(({ letter, text }) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "question-choice-btn";
+    btn.dataset.choice = letter;
+    btn.setAttribute("role", "radio");
+    btn.setAttribute("aria-checked", questionAnswers[idx] === letter ? "true" : "false");
+
+    const badge = document.createElement("span");
+    badge.className = "question-choice-letter";
+    badge.textContent = letter;
+
+    const optionText = document.createElement("span");
+    optionText.className = "question-choice-text";
+    optionText.textContent = text;
+
+    btn.appendChild(badge);
+    btn.appendChild(optionText);
+
+    if (questionAnswers[idx] === letter) {
+      btn.classList.add("selected");
+    }
+
+    btn.addEventListener("click", () => {
+      setSelectedChoice(group, idx, letter);
+    });
+
+    group.appendChild(btn);
+  });
+
+  container.appendChild(group);
+}
+
+function createChoiceAnswerControl(idx) {
+  const group = document.createElement("div");
+  group.className = "choice-answer-group";
+  group.setAttribute("role", "radiogroup");
+  group.setAttribute("aria-label", t("your_answer"));
+
+  ["A", "B", "C", "D"].forEach((letter) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "choice-answer-btn";
+    btn.textContent = letter;
+    btn.dataset.choice = letter;
+    btn.setAttribute("role", "radio");
+    btn.setAttribute("aria-checked", questionAnswers[idx] === letter ? "true" : "false");
+    if (questionAnswers[idx] === letter) {
+      btn.classList.add("selected");
+    }
+
+    btn.addEventListener("click", () => {
+      setSelectedChoice(group, idx, letter);
+    });
+
+    group.appendChild(btn);
+  });
+
+  return group;
+}
+
 // 鏍规嵁褰撳墠棰樼洰锛屾洿鏂板簳閮ㄧ殑鈥滄儏鏅縼绉荤粌涔犫€濆叆鍙?
 function updateScenarioEntry(idx) {
   const titleEl = document.getElementById("scenario-entry-title");
@@ -1352,7 +1465,7 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
   const typeInput = document.querySelector(
     'input[name="question-type"]:checked'
   );
-  const questionType = typeInput ? typeInput.value : "short_answer";
+  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
 
   // 鍕鹃€夌殑鏂囩尞鍒楄〃锛堜笌鐢熸垚棰樼洰鏃朵繚鎸佷竴鑷达級
   const selectedDocs = Array.from(
@@ -1508,7 +1621,7 @@ async function generateScenarioQuestion(idx, btn, force = false) {
   const typeInput = document.querySelector(
     'input[name="question-type"]:checked'
   );
-  const questionType = typeInput ? typeInput.value : "short_answer";
+  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
 
   // 鍕鹃€夌殑鏂囩尞锛堜笌鍑洪鏃朵繚鎸佷竴鑷达級
   const selectedDocs = Array.from(
@@ -1587,7 +1700,7 @@ async function gradeScenarioQuestion(idx, submitBtn, resultBox) {
   const typeInput = document.querySelector(
     'input[name="question-type"]:checked'
   );
-  const questionType = typeInput ? typeInput.value : "short_answer";
+  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
 
   const selectedDocs = Array.from(
     document.querySelectorAll(".material-checkbox:checked")
@@ -1690,7 +1803,7 @@ async function generateExplainForQuestion(idx, contentEl, triggerBtn) {
   const typeInput = document.querySelector(
     'input[name="question-type"]:checked'
   );
-  const questionType = typeInput ? typeInput.value : "short_answer";
+  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
 
   const selectedDocs = Array.from(
     document.querySelectorAll(".material-checkbox:checked")
@@ -2053,7 +2166,7 @@ function checkRoundAndRequestFeedback() {
   const typeInput = document.querySelector(
     'input[name="question-type"]:checked'
   );
-  const questionType = typeInput ? typeInput.value : "short_answer";
+  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
 
   // 猸?2. 鎶婃湰杞墍鏈夐鐩墦鍖呮垚 all_items
   const allItems = questionList.map((q, idx) => {
@@ -2592,6 +2705,7 @@ async function sendMessage() {
   // Question type: read from radio input
   const typeInput = document.querySelector('input[name="question-type"]:checked');
   const questionType = typeInput ? typeInput.value : "fill_blank";
+  activeQuestionType = questionType;
 
   // Number of questions: read from number input
   const countInput = document.getElementById("question-count");

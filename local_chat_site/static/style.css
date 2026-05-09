@@ -57,8 +57,8 @@ body {
   gap: 11px;
   font-weight: 900;
   font-size: 18px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-transform: none;
   color: #0f172a;
   white-space: nowrap;
   line-height: 1;
@@ -299,6 +299,109 @@ body {
 .chat-window::-webkit-scrollbar {
   width: 6px;
 }
+
+.choice-answer-group {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(58px, 1fr));
+  gap: 10px;
+}
+
+.choice-answer-btn {
+  min-height: 48px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.choice-answer-btn:hover {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+  transform: translateY(-1px);
+}
+
+.choice-answer-btn.selected {
+  border-color: #0ea5e9;
+  background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 55%, #22c55e 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.25);
+}
+
+.question-prompt-text {
+  margin-bottom: 14px;
+  white-space: pre-wrap;
+}
+
+.question-choice-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.question-choice-btn {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.question-choice-btn:hover {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+  transform: translateY(-1px);
+}
+
+.question-choice-btn.selected {
+  border-color: #0ea5e9;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(34, 197, 94, 0.12) 100%);
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.16);
+}
+
+.question-choice-letter {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 900;
+}
+
+.question-choice-btn.selected .question-choice-letter {
+  background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
+  color: #ffffff;
+}
+
+.question-choice-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .choice-answer-group {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .chat-window::-webkit-scrollbar-track {
   background: transparent;
 }
@@ -2276,7 +2379,7 @@ body.auth-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px 48px;
+  padding: 92px 48px 28px;
   overflow-y: auto;
   background:
     radial-gradient(circle at 18% 14%, rgba(14, 165, 233, 0.12), transparent 28%),
@@ -2317,7 +2420,7 @@ body.auth-open {
   position: relative;
   z-index: 1;
   width: min(1440px, 100%);
-  min-height: min(860px, calc(100vh - 56px));
+  min-height: min(800px, calc(100vh - 120px));
   display: grid;
   grid-template-columns: minmax(480px, 1.12fr) minmax(420px, 0.95fr);
   gap: 30px;
@@ -2345,7 +2448,7 @@ body.auth-open {
 
 .auth-visual {
   position: relative;
-  padding: 48px;
+  padding: 44px 48px 48px;
   color: #f8fafc;
   background:
     linear-gradient(rgba(248, 250, 252, 0.34), rgba(248, 250, 252, 0.34)),
@@ -2365,8 +2468,8 @@ body.auth-open {
   width: max-content;
   border: 1px solid rgba(186, 230, 253, 0.55);
   border-radius: 10px;
-  padding: 10px 15px;
-  font-size: 13px;
+  padding: 8px 13px;
+  font-size: 12px;
   letter-spacing: 0.09em;
   font-weight: 700;
   background: rgba(15, 23, 42, 0.22);
@@ -2381,13 +2484,18 @@ body.auth-open {
 }
 
 .auth-copy h1 {
-  max-width: 690px;
-  margin: 30px 0 16px;
-  font-size: clamp(54px, 5.2vw, 92px);
-  line-height: 0.94;
+  max-width: 620px;
+  margin: 34px 0 16px;
+  font-size: clamp(42px, 4vw, 72px);
+  line-height: 1.02;
   letter-spacing: 0;
   color: #f8fafc;
   text-shadow: 0 4px 18px rgba(15, 23, 42, 0.45);
+}
+
+html:lang(zh-CN) .auth-copy h1 {
+  max-width: 560px;
+  font-size: clamp(40px, 3.7vw, 64px);
 }
 
 .auth-copy p {
@@ -2454,10 +2562,14 @@ body.auth-open {
 .auth-form h2 {
   margin: 0 0 10px;
   max-width: 560px;
-  font-size: clamp(34px, 3.1vw, 42px);
-  line-height: 1.08;
+  font-size: clamp(30px, 2.6vw, 38px);
+  line-height: 1.12;
   color: #0f172a;
   letter-spacing: 0;
+}
+
+html:lang(zh-CN) .auth-form h2 {
+  font-size: clamp(30px, 2.4vw, 36px);
 }
 
 .auth-form p {
@@ -2682,7 +2794,7 @@ body:not(.auth-register) .auth-copy-register {
 
   .auth-screen {
     align-items: flex-start;
-    padding: 80px 18px 18px;
+    padding: 88px 18px 18px;
   }
 
   .auth-shell {
@@ -2695,6 +2807,11 @@ body:not(.auth-register) .auth-copy-register {
     padding: 30px;
   }
 
+  .auth-copy h1 {
+    max-width: 560px;
+    font-size: clamp(38px, 8vw, 58px);
+  }
+
   .auth-benefits {
     grid-template-columns: 1fr;
   }
@@ -2702,7 +2819,7 @@ body:not(.auth-register) .auth-copy-register {
 
 @media (max-width: 640px) {
   .auth-screen {
-    padding: 0;
+    padding: 78px 0 0;
   }
 
   .auth-lang-toggle-btn {
@@ -2720,6 +2837,15 @@ body:not(.auth-register) .auth-copy-register {
 
   .auth-card {
     padding: 10px;
+  }
+
+  .auth-copy h1 {
+    font-size: 36px;
+    line-height: 1.08;
+  }
+
+  .auth-form h2 {
+    font-size: 28px;
   }
 
   .auth-two {
