@@ -15,6 +15,7 @@ let qaHistory = [];
 let answeredFlags = [];
 let wrongQuestions = [];
 let hasShownRoundFeedback = false;
+let showCompletionOverview = false;
 
 let scenarioQuestionTexts = [];   // 姣忛亾棰樺搴旂殑涓€閬撯€滄儏鏅縼绉婚鈥濈殑棰樺共
 let scenarioAnswers = [];         // 姣忛亾棰樺搴旀儏鏅鐨勪綔绛?
@@ -47,6 +48,10 @@ const I18N = {
     "multiple_choice": "???",
     "short_answer": "???",
     "count": "??",
+    "difficulty": "???",
+    "difficulty_low": "?",
+    "difficulty_medium": "?",
+    "difficulty_high": "?",
     "generate_questions": "????",
     "prev_question": "???",
     "next_question": "???",
@@ -121,13 +126,17 @@ const I18N = {
     "multiple_choice": "Multiple Choice",
     "short_answer": "Short Answer",
     "count": "Count",
+    "difficulty": "Difficulty",
+    "difficulty_low": "Low",
+    "difficulty_medium": "Medium",
+    "difficulty_high": "High",
     "generate_questions": "Generate Questions",
     "prev_question": "Last question",
     "next_question": "Next question",
     "survey": "Start Questionnaire",
     "feedback_default": "After completing all questions, I will tell you which areas need improvement.",
     "scenario_entry_desc": "You can click below to generate similar questions using the same concept.",
-    "scenario_entry_disabled": "Available after answering incorrectly",
+    "scenario_entry_disabled": "Generate Similar Question",
     "no_score": "No score records yet. Scores will be recorded automatically after grading.",
     "latest_points": "Latest: {n} points",
     "latest_empty": "Latest: -- points",
@@ -182,7 +191,17 @@ const I18N = {
     "upload_parse_loading": "Uploading and parsing...",
     "upload_exam_ok": "Uploaded {saved} file(s), extracted {imported} question(s).",
     "upload_past_btn": "Upload Past Exam Papers",
-    "generate_btn": "Generate Questions"
+    "generate_btn": "Generate Questions",
+    "completion_title": "All questions completed",
+    "completion_subtitle": "Review any completed question below.",
+    "completion_status": "Completed",
+    "completion_review": "Review",
+    "completion_question_label": "Question {n}",
+    "completion_back": "Back to completed questions",
+    "completion_analyze": "Analyze this round",
+    "completion_analyzing": "Analyzing...",
+    "completion_analysis_title": "Learning weakness analysis",
+    "completion_analysis_placeholder": "Click the analysis button to review your strengths, weak knowledge areas, and next study steps."
   }
 };
 
@@ -197,13 +216,17 @@ const ZH_OVERRIDES = {
   multiple_choice: "选择题",
   short_answer: "简答题",
   count: "数量",
+  difficulty: "难度",
+  difficulty_low: "低",
+  difficulty_medium: "中",
+  difficulty_high: "高",
   generate_btn: "生成试题",
   prev_question: "上一题",
   next_question: "下一题",
   survey: "开始问卷",
   feedback_default: "完成全部题目后，我会告诉你需要加强的知识点。",
   scenario_entry_desc: "你可以点击下方按钮，基于同一知识点生成相似题目。",
-  scenario_entry_disabled: "答错后可用",
+  scenario_entry_disabled: "生成类似题",
   no_score: "暂无成绩记录。每次批改完成后会自动记录分数。",
   latest_points: "最近：{n} 分",
   latest_empty: "最近：-- 分",
@@ -227,7 +250,7 @@ const ZH_OVERRIDES = {
   qa_request_failed: "❌ 请求失败，请检查后端是否正常运行。",
   qa_followup_prompt: "关于这道题还有其他问题吗？",
   scenario_title: "情景练习（错题重练）",
-  scenario_generate: "生成相似题",
+  scenario_generate: "生成类似题",
   scenario_not_ready: "尚未生成情景题。",
   scenario_need_generate: "请先生成情景题。",
   scenario_submit_first: "请先提交并完成批改。",
@@ -257,7 +280,17 @@ const ZH_OVERRIDES = {
   upload_exam_first: "请先选择要上传的试卷文件。",
   upload_parse_loading: "上传并解析中...",
   upload_exam_ok: "已上传 {saved} 个文件，成功提取 {imported} 道题。",
-  upload_past_btn: "上传历年试卷文件"
+  upload_past_btn: "上传历年试卷文件",
+  completion_title: "已完成所有题目",
+  completion_subtitle: "可在下方查看全部题号，并返回任意题目复习。",
+  completion_status: "已完成",
+  completion_review: "Review",
+  completion_question_label: "第 {n} 题",
+  completion_back: "返回完成列表",
+  completion_analyze: "分析本轮表现",
+  completion_analyzing: "分析中...",
+  completion_analysis_title: "知识薄弱点分析",
+  completion_analysis_placeholder: "点击分析按钮后，系统会结合全部题目与作答，总结你的优势、薄弱点和后续复习建议。"
 };
 
 function t(key, vars = {}) {
@@ -419,7 +452,28 @@ function applyStaticI18n() {
     if (input && label) {
       label.innerHTML = "";
       label.appendChild(input);
-      label.appendChild(document.createTextNode(` ${t(key)}`));
+      const textSpan = document.createElement("span");
+      textSpan.innerText = t(key);
+      label.appendChild(textSpan);
+    }
+  });
+
+  const difficultyLabel = document.querySelector(".difficulty-label");
+  if (difficultyLabel) difficultyLabel.innerText = t("difficulty");
+  const difficultyMap = [
+    ["low", "difficulty_low"],
+    ["medium", "difficulty_medium"],
+    ["high", "difficulty_high"],
+  ];
+  difficultyMap.forEach(([val, key]) => {
+    const input = document.querySelector(`input[name="question-difficulty"][value="${val}"]`);
+    const label = input ? input.closest("label") : null;
+    if (input && label) {
+      label.innerHTML = "";
+      label.appendChild(input);
+      const textSpan = document.createElement("span");
+      textSpan.innerText = t(key);
+      label.appendChild(textSpan);
     }
   });
 
@@ -440,8 +494,6 @@ function applyStaticI18n() {
   if (surveyBtn) surveyBtn.innerText = t("survey");
   const examFeedback = document.getElementById("exam-feedback");
   if (examFeedback) examFeedback.innerText = t("feedback_default");
-  const scenarioDesc = document.getElementById("scenario-entry-desc");
-  if (scenarioDesc) scenarioDesc.innerText = t("scenario_entry_desc");
   const scenarioEntryBtn = document.getElementById("scenario-entry-btn");
   if (scenarioEntryBtn && scenarioEntryBtn.disabled) scenarioEntryBtn.innerText = t("scenario_entry_disabled");
 
@@ -924,6 +976,11 @@ function renderQuestionCard() {
     return;
   }
 
+  if (showCompletionOverview && isRoundComplete()) {
+    renderCompletionOverview(container);
+    return;
+  }
+
   const total = questionList.length;
   const idx = Math.max(0, Math.min(currentQuestionIndex, total - 1));
   currentQuestionIndex = idx;
@@ -937,7 +994,23 @@ function renderQuestionCard() {
   // 棰樺彿
   const header = document.createElement("div");
   header.className = "question-card-header";
-  header.innerText = t("question_x", { a: idx + 1, b: total });
+
+  const headerTitle = document.createElement("span");
+  headerTitle.className = "question-card-title";
+  headerTitle.innerText = t("question_x", { a: idx + 1, b: total });
+  header.appendChild(headerTitle);
+
+  if (isRoundComplete()) {
+    const backToOverviewBtn = document.createElement("button");
+    backToOverviewBtn.type = "button";
+    backToOverviewBtn.className = "completion-back-btn";
+    backToOverviewBtn.innerText = t("completion_back");
+    backToOverviewBtn.addEventListener("click", () => {
+      showCompletionOverview = true;
+      renderQuestionCard();
+    });
+    header.appendChild(backToOverviewBtn);
+  }
 
   // 棰樺共
   const body = document.createElement("div");
@@ -1004,6 +1077,14 @@ function renderQuestionCard() {
   askAiBtn.className = "ask-ai-btn";
   askAiBtn.innerText = t("ask_ai");
 
+  const scenarioBtn = document.createElement("button");
+  scenarioBtn.id = "scenario-entry-btn";
+  scenarioBtn.className = "scenario-btn question-scenario-btn";
+  scenarioBtn.type = "button";
+  scenarioBtn.disabled = false;
+  scenarioBtn.innerText = t("scenario_generate");
+  scenarioBtn.title = "";
+
   // 猸?鎶娾€淕ot it / I don't understand / Detailed Explanation / Ask AI鈥?鏀惧湪鍚屼竴琛?
   const understandRow = document.createElement("div");
   understandRow.className = "understand-row";
@@ -1011,6 +1092,7 @@ function renderQuestionCard() {
   understandRow.appendChild(dontUnderstandBtn);
   understandRow.appendChild(explainBtn);
   understandRow.appendChild(askAiBtn);
+  understandRow.appendChild(scenarioBtn);
 
 
   // 鍙湁鎵规敼杩囧悗鎵嶈兘鐐圭悊瑙ｇ浉鍏虫寜閽?
@@ -1176,13 +1258,11 @@ function renderQuestionCard() {
     }
   });
 
-
-
-    // === 鎯呮櫙杩佺Щ鍖哄煙鏀逛负搴曢儴缁熶竴鍏ュ彛锛屼笉鍐嶆斁鍦ㄩ鍗″唴閮?===
-  updateScenarioEntry(idx);
-
   wrapper.appendChild(card);
   container.appendChild(wrapper);
+
+  // The scenario button must be in the document before lookup-based wiring runs.
+  updateScenarioEntry(idx);
 
 
 
@@ -1192,7 +1272,7 @@ function renderQuestionCard() {
 
   if (bottomPrevBtn && bottomNextBtn) {
     bottomPrevBtn.disabled = idx === 0;
-    bottomNextBtn.disabled = idx === total - 1;
+    bottomNextBtn.disabled = idx === total - 1 && !isRoundComplete();
 
     bottomPrevBtn.onclick = () => {
       if (currentQuestionIndex > 0) {
@@ -1205,8 +1285,187 @@ function renderQuestionCard() {
       if (currentQuestionIndex < questionList.length - 1) {
         currentQuestionIndex += 1;
         renderQuestionCard();
+      } else if (isRoundComplete()) {
+        showCompletionOverview = true;
+        renderQuestionCard();
       }
     };
+  }
+}
+
+function isRoundComplete() {
+  return Boolean(
+    questionList &&
+      questionList.length > 0 &&
+      Array.isArray(answeredFlags) &&
+      answeredFlags.length === questionList.length &&
+      answeredFlags.every((flag) => flag)
+  );
+}
+
+function renderCompletionOverview(container) {
+  const panel = document.createElement("section");
+  panel.className = "completion-overview";
+
+  const header = document.createElement("div");
+  header.className = "completion-overview-header";
+
+  const title = document.createElement("h3");
+  title.className = "completion-overview-title";
+  title.innerText = t("completion_title");
+
+  const subtitle = document.createElement("p");
+  subtitle.className = "completion-overview-subtitle";
+  subtitle.innerText = t("completion_subtitle");
+
+  header.appendChild(title);
+  header.appendChild(subtitle);
+  panel.appendChild(header);
+
+  const analysisToolbar = document.createElement("div");
+  analysisToolbar.className = "completion-analysis-toolbar";
+
+  const analyzeBtn = document.createElement("button");
+  analyzeBtn.type = "button";
+  analyzeBtn.className = "completion-analyze-btn";
+  analyzeBtn.innerText = t("completion_analyze");
+
+  analysisToolbar.appendChild(analyzeBtn);
+  panel.appendChild(analysisToolbar);
+
+  const list = document.createElement("div");
+  list.className = "completion-question-list";
+
+  questionList.forEach((_, idx) => {
+    const row = document.createElement("div");
+    row.className = "completion-question-row";
+
+    const label = document.createElement("div");
+    label.className = "completion-question-label";
+    label.innerText = t("completion_question_label", { n: idx + 1 });
+
+    const actions = document.createElement("div");
+    actions.className = "completion-question-actions";
+
+    const status = document.createElement("span");
+    status.className = "completion-status-pill";
+    status.innerText = t("completion_status");
+
+    const reviewBtn = document.createElement("button");
+    reviewBtn.type = "button";
+    reviewBtn.className = "completion-review-btn";
+    reviewBtn.innerText = t("completion_review");
+    reviewBtn.addEventListener("click", () => {
+      currentQuestionIndex = idx;
+      showCompletionOverview = false;
+      renderQuestionCard();
+    });
+
+    actions.appendChild(status);
+    actions.appendChild(reviewBtn);
+    row.appendChild(label);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+
+  panel.appendChild(list);
+
+  const analysisPanel = document.createElement("section");
+  analysisPanel.className = "completion-analysis-panel";
+
+  const analysisTitle = document.createElement("h4");
+  analysisTitle.className = "completion-analysis-title";
+  analysisTitle.innerText = t("completion_analysis_title");
+
+  const analysisContent = document.createElement("div");
+  analysisContent.className = "completion-analysis-content";
+  analysisContent.innerText = t("completion_analysis_placeholder");
+
+  analysisPanel.appendChild(analysisTitle);
+  analysisPanel.appendChild(analysisContent);
+  panel.appendChild(analysisPanel);
+
+  analyzeBtn.addEventListener("click", () => {
+    requestRoundAnalysis(analyzeBtn, analysisContent);
+  });
+
+  container.appendChild(panel);
+
+  const bottomPrevBtn = document.getElementById("exam-prev-btn");
+  const bottomNextBtn = document.getElementById("exam-next-btn");
+  if (bottomPrevBtn) {
+    bottomPrevBtn.disabled = false;
+    bottomPrevBtn.onclick = () => {
+      currentQuestionIndex = Math.max(0, questionList.length - 1);
+      showCompletionOverview = false;
+      renderQuestionCard();
+    };
+  }
+  if (bottomNextBtn) {
+    bottomNextBtn.disabled = true;
+    bottomNextBtn.onclick = null;
+  }
+}
+
+function buildFullRoundItems() {
+  const typeInput = document.querySelector('input[name="question-type"]:checked');
+  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
+
+  return questionList.map((question, idx) => {
+    const evaluation = questionEvaluations[idx] || "";
+    const studentAnswer = (questionAnswers[idx] || "").trim();
+    const firstLine = String(evaluation).split(/\r?\n/)[0] || "";
+
+    let verdict = "unknown";
+    if (firstLine.includes("Partially correct")) {
+      verdict = "partial";
+    } else if (
+      firstLine.includes("Incorrect") ||
+      firstLine.includes("Not correct") ||
+      firstLine.includes("Wrong")
+    ) {
+      verdict = "wrong";
+    } else if (firstLine.includes("Correct")) {
+      verdict = "correct";
+    }
+
+    return {
+      index: idx,
+      question,
+      student_answer: studentAnswer,
+      evaluation,
+      verdict,
+      question_type: questionType,
+    };
+  });
+}
+
+async function requestRoundAnalysis(button, target) {
+  if (!isRoundComplete()) return;
+
+  const previousLabel = button.innerText;
+  button.disabled = true;
+  button.innerText = t("completion_analyzing");
+  target.innerText = t("completion_analyzing");
+
+  try {
+    const resp = await fetch("/api/round_analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ all_items: buildFullRoundItems() }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      target.innerText = data.analysis || t("completion_analysis_placeholder");
+    } else {
+      target.innerText = data.msg || t("request_failed");
+    }
+  } catch (err) {
+    console.error(err);
+    target.innerText = t("request_failed");
+  } finally {
+    button.disabled = false;
+    button.innerText = previousLabel;
   }
 }
 
@@ -1315,32 +1574,15 @@ function createChoiceAnswerControl(idx) {
 
 // 鏍规嵁褰撳墠棰樼洰锛屾洿鏂板簳閮ㄧ殑鈥滄儏鏅縼绉荤粌涔犫€濆叆鍙?
 function updateScenarioEntry(idx) {
-  const titleEl = document.getElementById("scenario-entry-title");
-  const descEl = document.getElementById("scenario-entry-desc");
   const btn = document.getElementById("scenario-entry-btn");
 
-  if (!titleEl || !descEl || !btn) return;
+  if (!btn) return;
 
-  titleEl.textContent = t("scenario_title");
-  descEl.textContent =
-    "When this question is marked as incorrect, you may click the button below to generate a new scenario-based practice question from the same knowledge point.";
-
-  const isWrong =
-    wrongQuestions && wrongQuestions.some((item) => item.index === idx);
-
-  btn.disabled = !isWrong;
-btn.textContent = isWrong
-  ? t("scenario_generate")
-  : "Scenario practice available only after incorrect answer";
+  btn.disabled = false;
+  btn.textContent = t("scenario_generate");
+  btn.title = "";
 
   btn.onclick = () => {
-    const latestIsWrong =
-      wrongQuestions && wrongQuestions.some((item) => item.index === idx);
-    if (!latestIsWrong) {
-      alert("You can only generate a scenario practice after this question has been marked as incorrect.");
-      return;
-    }
-
     // 宸茬粡鐢熸垚杩囨儏鏅锛岀洿鎺ユ墦寮€寮圭獥锛涘惁鍒欏厛鐢熸垚鍐嶆墦寮€
     if (scenarioQuestionTexts[idx]) {
       openScenarioModal(idx);
@@ -1570,6 +1812,10 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
 
       // 7锔忊儯 妫€鏌ユ槸鍚﹀畬鎴愪竴杞瓟棰橈紝鐢ㄤ簬鐢熸垚涓€у寲鍙嶉 & 鎶樼嚎鍥?
       checkRoundAndRequestFeedback();
+      if (isRoundComplete()) {
+        showCompletionOverview = true;
+        renderQuestionCard();
+      }
     } else {
       const msg = data.msg || t("grading_failed");
       if (resultBox) {
@@ -1605,17 +1851,6 @@ async function generateScenarioQuestion(idx, btn, force = false) {
   const questionText = questionList[idx];
   const ans = (questionAnswers[idx] || "").trim();
   const fb = questionEvaluations[idx] || "";
-
-  // 纭繚鏈宸茬粡琚垽瀹氫负閿欒锛坵rongQuestions 閲屽瓨鍦ㄥ搴?index锛?
-  const isWrong =
-    wrongQuestions &&
-    wrongQuestions.some((item) => item.index === idx);
-
-  // 猸?榛樿浠嶇劧鍙鈥滈敊棰樷€濆紑鏀炬儏鏅縼绉伙紱鐗规畩鍦烘櫙鍙互閫氳繃 force = true 璺宠繃闄愬埗
-  if (!isWrong && !force) {
-    alert("Scenario practice is available only after this question is marked incorrect.");
-    return;
-  }
 
   // 棰樺瀷锛堜笌鍑洪/鎵规敼淇濇寔涓€鑷达級
   const typeInput = document.querySelector(
@@ -2267,6 +2502,7 @@ function setQuestions(rawText) {
   answeredFlags = new Array(questionList.length).fill(false);
   wrongQuestions = [];
   hasShownRoundFeedback = false;
+  showCompletionOverview = false;
 
    // 猸?Reset scenario-based training states
   scenarioQuestionTexts = new Array(questionList.length).fill("");
@@ -2714,6 +2950,9 @@ async function sendMessage() {
     numQuestions = 5;
   }
 
+  const difficultyInput = document.querySelector('input[name="question-difficulty"]:checked');
+  const questionDifficulty = difficultyInput ? difficultyInput.value : "medium";
+
   // Selected document list
   const selectedDocs = Array.from(
     document.querySelectorAll(".material-checkbox:checked")
@@ -2755,6 +2994,7 @@ async function sendMessage() {
         history: chatHistory,
         question_type: questionType,
         num_questions: numQuestions,
+        difficulty: questionDifficulty,
         selected_docs: selectedDocs, // 猸?Send selected documents to backend
         selected_past_exam_ids: selectedPastExamIds,
       }),

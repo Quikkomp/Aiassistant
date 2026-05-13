@@ -15,7 +15,8 @@ try:
 except AttributeError:
     pass
 import rag_agentV3_2 as rag_agent_module  # ✅ 修改为你的文件名
-import psycopg2
+import mysql.connector
+from mysql.connector import IntegrityError as MySQLIntegrityError
 from collections import Counter
 
 
@@ -28,15 +29,28 @@ PAST_EXAM_UPLOAD_FOLDER = os.path.join(BASE_DIR, "exam_db", "past_exam_files")
 AUTH_DB_PATH = os.getenv("AUTH_DB_PATH") or os.path.join(BASE_DIR, "app_users.sqlite3")
 
 # ---------------- 数据库配置 ----------------
-DB_DSN = os.getenv("EXAM_DB_DSN")  # 从 .env 中读取
+MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 
 def get_db_conn():
     """
-    获取一个新的 PostgreSQL 连接。
+    获取一个新的 MySQL 连接。
     """
-    if not DB_DSN:
-        raise RuntimeError("EXAM_DB_DSN is not set in environment variables")
-    return psycopg2.connect(DB_DSN)
+    if not MYSQL_DATABASE or not MYSQL_USER:
+        raise RuntimeError("MYSQL_DATABASE and MYSQL_USER must be set in environment variables")
+    return mysql.connector.connect(
+        host=MYSQL_HOST,
+        port=MYSQL_PORT,
+        database=MYSQL_DATABASE,
+        user=MYSQL_USER,
+        password=MYSQL_PASSWORD,
+        charset="utf8mb4",
+        use_unicode=True,
+        autocommit=False,
+    )
 
 
 def init_db():
@@ -49,54 +63,56 @@ def init_db():
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_rounds (
-                id              SERIAL PRIMARY KEY,
-                user_id         TEXT NOT NULL,
-                created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+                id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id         VARCHAR(64) NOT NULL,
+                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 round_score     INTEGER,
                 total_questions INTEGER,
                 correct_count   INTEGER,
                 partial_count   INTEGER,
                 wrong_count     INTEGER
-            );
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """)
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_answers (
-                id              SERIAL PRIMARY KEY,
-                round_id        INTEGER NOT NULL REFERENCES user_rounds(id) ON DELETE CASCADE,
-                user_id         TEXT NOT NULL,
+                id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                round_id        BIGINT UNSIGNED NOT NULL,
+                user_id         VARCHAR(64) NOT NULL,
                 question_index  INTEGER,
-                question_type   TEXT,
-                verdict         TEXT,
-                question_text   TEXT,
-                student_answer  TEXT,
-                evaluation      TEXT,
-                created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-            );
+                question_type   VARCHAR(64),
+                verdict         VARCHAR(64),
+                question_text   LONGTEXT,
+                student_answer  LONGTEXT,
+                evaluation      LONGTEXT,
+                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_user_answers_round
+                    FOREIGN KEY (round_id) REFERENCES user_rounds(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """)
 
         # ⭐ 新增：存储用户与 AI 的对话记录
         cur.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
-                id             SERIAL PRIMARY KEY,
-                user_id        TEXT NOT NULL,
-                conv_type      TEXT NOT NULL,       -- 对话类型：chat / exam_qa 等
+                id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id        VARCHAR(64) NOT NULL,
+                conv_type      VARCHAR(64) NOT NULL,       -- 对话类型：chat / exam_qa 等
                 question_index INTEGER,            -- 如与某题绑定，则存该题 index，否则为 NULL
-                role           TEXT NOT NULL,      -- 'user' 或 'assistant'
-                content        TEXT NOT NULL,      -- 对话内容
-                created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-            );
+                role           VARCHAR(32) NOT NULL,      -- 'user' 或 'assistant'
+                content        LONGTEXT NOT NULL,      -- 对话内容
+                created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """)
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS app_users (
-                id              SERIAL PRIMARY KEY,
-                username        TEXT NOT NULL UNIQUE,
-                email           TEXT NOT NULL UNIQUE,
-                password_hash   TEXT NOT NULL,
-                public_user_id  TEXT NOT NULL UNIQUE,
-                created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-            );
+                id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                username        VARCHAR(32) NOT NULL UNIQUE,
+                email           VARCHAR(255) NOT NULL UNIQUE,
+                password_hash   VARCHAR(255) NOT NULL,
+                public_user_id  VARCHAR(64) NOT NULL UNIQUE,
+                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """)
 
         conn.commit()
@@ -109,11 +125,11 @@ def init_db():
 
 def get_auth_db_conn():
     """
-    Auth prefers PostgreSQL, then falls back to a local SQLite file so login/register
-    still work on machines without a running PostgreSQL service.
+    Auth prefers MySQL, then falls back to a local SQLite file so login/register
+    still work on machines without a running MySQL service.
     """
     try:
-        return get_db_conn(), "postgres"
+        return get_db_conn(), "mysql"
     except Exception as e:
         print(f"Auth DB fallback to SQLite: {e}")
         conn = sqlite3.connect(AUTH_DB_PATH)
@@ -140,13 +156,13 @@ def init_auth_db():
     else:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS app_users (
-                id              SERIAL PRIMARY KEY,
-                username        TEXT NOT NULL UNIQUE,
-                email           TEXT NOT NULL UNIQUE,
-                password_hash   TEXT NOT NULL,
-                public_user_id  TEXT NOT NULL UNIQUE,
-                created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-            );
+                id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                username        VARCHAR(32) NOT NULL UNIQUE,
+                email           VARCHAR(255) NOT NULL UNIQUE,
+                password_hash   VARCHAR(255) NOT NULL,
+                public_user_id  VARCHAR(64) NOT NULL UNIQUE,
+                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """)
     conn.commit()
     cur.close()
@@ -154,7 +170,7 @@ def init_auth_db():
 
 
 def is_unique_violation(exc):
-    return isinstance(exc, psycopg2.errors.UniqueViolation) or isinstance(exc, sqlite3.IntegrityError)
+    return isinstance(exc, MySQLIntegrityError) or isinstance(exc, sqlite3.IntegrityError)
 
 
 app = Flask(__name__)
@@ -238,12 +254,11 @@ def save_round_to_db(user_id: str, round_score, all_items):
         """
         INSERT INTO user_rounds
             (user_id, round_score, total_questions, correct_count, partial_count, wrong_count)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        RETURNING id;
+        VALUES (%s, %s, %s, %s, %s, %s);
         """,
         (user_id, round_score, total, correct, partial, wrong)
     )
-    round_id = cur.fetchone()[0]
+    round_id = cur.lastrowid
 
     # 插入每一道题的记录
     for item in all_items:
@@ -385,6 +400,7 @@ def call_local_model(
     query: str,
     question_type: str,
     num_questions: int,
+    difficulty: str = "medium",
     selected_docs: List[str] | None = None,
     selected_exam_ids: List[int] | None = None,
 ) -> str:
@@ -395,7 +411,7 @@ def call_local_model(
     """
     print(
         f"📝 [Router] Generate exam questions: "
-        f"type={question_type}, num={num_questions}, "
+        f"type={question_type}, num={num_questions}, difficulty={difficulty}, "
         f"selected_docs={selected_docs}, selected_exam_ids={selected_exam_ids}"
     )
     agent = get_rag_agent_for_current_user()
@@ -403,6 +419,7 @@ def call_local_model(
         query=query,
         question_type=question_type,
         num_questions=num_questions,
+        difficulty=difficulty,
         selected_docs=selected_docs or [],
         selected_exam_ids=selected_exam_ids or None,
     )
@@ -455,11 +472,9 @@ def auth_register():
                 """
                 INSERT INTO app_users (username, email, password_hash, public_user_id)
                 VALUES (%s, %s, %s, %s)
-                RETURNING public_user_id;
                 """,
                 (username, email, password_hash, public_user_id),
             )
-            public_user_id = cur.fetchone()[0]
         conn.commit()
         cur.close()
         conn.close()
@@ -699,6 +714,7 @@ def chat():
     # 前端发送过来的题型 / 数量 / 勾选文献 / 勾选的过往试卷题目
     question_type = data.get("question_type", "fill_blank")
     num_questions = data.get("num_questions", 5)
+    difficulty = data.get("difficulty", "medium")
 
     # 保证一定是 list，而不是 None
     selected_docs = data.get("selected_docs", []) or []
@@ -715,6 +731,7 @@ def chat():
         user_message,
         question_type=question_type,
         num_questions=num_questions,
+        difficulty=difficulty,
         selected_docs=selected_docs,
         selected_exam_ids=selected_exam_ids,
     )
@@ -855,6 +872,22 @@ def exam_feedback():
         agent = get_rag_agent_for_current_user()
         feedback_text = agent.summarize_wrong_questions(wrong_items)
         return jsonify({"ok": True, "feedback": feedback_text})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/api/round_analysis", methods=["POST"])
+def round_analysis():
+    data = request.get_json(silent=True) or {}
+    all_items = data.get("all_items") or []
+
+    if not all_items:
+        return jsonify({"ok": False, "msg": "No completed round data was provided."}), 400
+
+    try:
+        agent = get_rag_agent_for_current_user()
+        analysis = agent.analyze_full_round(all_items)
+        return jsonify({"ok": True, "analysis": analysis})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 

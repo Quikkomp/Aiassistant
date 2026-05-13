@@ -760,6 +760,7 @@ class RagAgent:
             query: str,
             question_type: str,
             num_questions: int = 5,
+            difficulty: str = "medium",
             selected_docs=None,
             selected_exam_ids=None,
     ) -> str:
@@ -808,6 +809,23 @@ class RagAgent:
         except (TypeError, ValueError):
             n = 5
         n = max(1, min(n, 50))  # 限制在 1~50
+
+        difficulty_map = {
+            "low": (
+                "Low difficulty: generate foundation-level questions. Focus on direct recall, "
+                "basic definitions, simple recognition, and one-step application. Avoid tricky wording."
+            ),
+            "medium": (
+                "Medium difficulty: generate standard university practice questions. Include a mix of "
+                "recall and application, require students to connect 1-2 related concepts, and keep wording clear."
+            ),
+            "high": (
+                "High difficulty: generate challenging questions. Require deeper reasoning, comparison, "
+                "multi-step application, transfer to less familiar scenarios, and for multiple-choice questions use plausible distractors."
+            ),
+        }
+        difficulty_key = (difficulty or "medium").strip().lower()
+        difficulty_hint = difficulty_map.get(difficulty_key, difficulty_map["medium"])
 
         combined_context = ""
         results = []
@@ -983,6 +1001,8 @@ class RagAgent:
     {mode_hint}
     - Question type: {type_desc}
     - Number of questions: {n}
+    - Difficulty setting: {difficulty_key}
+      {difficulty_hint}
     - Do NOT provide answers or solutions, only the questions themselves.
     - Use clear numbering: Q1, Q2, Q3, ...
     - When possible, generate questions that are similar in style and difficulty
@@ -1779,6 +1799,70 @@ Do NOT repeat the full question stems; just refer to the concepts.
 # -------------------
 # 6️⃣ 主交互循环
 # -------------------
+    def analyze_full_round(self, all_items: list) -> str:
+            """
+            Analyze the entire completed practice round, not only wrong answers.
+            """
+            if not all_items:
+                return "No completed round data was provided, so analysis could not be generated."
+
+            parts = []
+            for i, item in enumerate(all_items, start=1):
+                question = (item.get("question") or "").strip()
+                answer = (item.get("student_answer") or "").strip()
+                evaluation = (item.get("evaluation") or "").strip()
+                verdict = (item.get("verdict") or "unknown").strip()
+                question_type = (item.get("question_type") or "").strip()
+
+                parts.append(
+                    f"Question {i} (type: {question_type}, verdict: {verdict})\n"
+                    f"Stem: {question[:450]}\n"
+                    f"Student answer: {answer[:450]}\n"
+                    f"Grading feedback: {evaluation[:450]}"
+                )
+
+            joined = "\n\n".join(parts)
+            if len(joined) > 9000:
+                joined = joined[:9000] + "\n...[truncated due to length]"
+
+            system_msg = (
+                "You are a university learning analyst. "
+                "You review a student's full completed practice round, including correct, partial, "
+                "and incorrect answers, in order to infer strengths, weak knowledge areas, and recurring misconceptions. "
+                "Always respond in English."
+            )
+
+            user_prompt = f"""
+Below is one full completed practice round. Each item includes the question stem, the student's answer,
+the grading verdict, and the grading feedback:
+
+{joined}
+
+Please produce a clear study analysis with these sections:
+
+1. Overall performance summary in 2-4 sentences.
+2. Main weak knowledge areas, prioritised from most urgent to least urgent.
+3. Evidence from the student's answers showing why each area is weak.
+4. Strengths or concepts the student appears to understand well.
+5. A concrete improvement plan with 3-5 next study actions.
+
+Do not simply restate each question. Synthesize patterns across the whole round.
+            """.strip()
+
+            try:
+                resp = self.client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                )
+                return resp.choices[0].message.content.strip()
+            except Exception as e:
+                print("鉂?analyze_full_round 澶辫触:", e)
+                return f"鈿狅笍 Failed to generate full-round analysis: {e}"
+
+
 def chat_with_agent():
     print("\n🤖 智能 RAG Agent 启动！输入 'exit' 退出\n")
     agent = RagAgent(client, db, serpapi_key)

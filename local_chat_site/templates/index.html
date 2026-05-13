@@ -109,9 +109,6 @@
         MetaThink AI
       </div>
       <div class="topbar-right">
-        <div class="kb-info">
-          Knowledge Base: <span id="kb-count">0</span> documents
-        </div>
         <button id="lang-toggle-btn" class="small-btn lang-toggle-btn" type="button">EN</button>
         <button id="guest-login-btn" class="small-btn guest-login-btn hidden" type="button">Login</button>
         <div id="account-chip" class="account-chip {% if not auth.authenticated %}hidden{% endif %}">
@@ -135,37 +132,35 @@
         <div class="input-row">
           <!-- Question settings: type + amount -->
           <div class="source-row">
-            <span class="source-label" style="font-size: 16px; font-weight: 600;">Type</span>
+            <span class="source-label question-toolbar-label">Type</span>
 
-            <label style="margin-right: 12px; font-size: 16px; font-weight: 600;">
-              <input type="radio" name="question-type" value="fill_blank" checked />
-              Fill-in-the-blank
+            <div class="question-type-group">
+              <label class="question-type-option">
+                <input type="radio" name="question-type" value="fill_blank" checked />
+                <span>Fill-in-the-blank</span>
+              </label>
+
+              <label class="question-type-option">
+                <input type="radio" name="question-type" value="multiple_choice" />
+                <span>Multiple Choice</span>
+              </label>
+
+              <label class="question-type-option">
+                <input type="radio" name="question-type" value="short_answer" />
+                <span>Short Answer</span>
+              </label>
+            </div>
+
+            <label class="question-count-control">
+              <span class="source-label question-toolbar-label">Count</span>
+              <input
+                id="question-count"
+                type="number"
+                min="1"
+                max="50"
+                value="5"
+              />
             </label>
-
-            <label style="margin-right: 12px; font-size: 16px; font-weight: 600;">
-              <input type="radio" name="question-type" value="multiple_choice" />
-              Multiple Choice
-            </label>
-
-            <label style="margin-right: 12px; font-size: 16px; font-weight: 600;">
-              <input type="radio" name="question-type" value="short_answer" />
-              Short Answer
-            </label>
-
-            <span
-              class="source-label"
-              style="margin-left: 16px; font-size: 16px; font-weight: 600;"
-            >
-              Count
-            </span>
-            <input
-              id="question-count"
-              type="number"
-              min="1"
-              max="50"
-              value="5"
-              style="width: 70px; margin-left: 4px;"
-            />
           </div>
 
 
@@ -179,6 +174,23 @@
   ></textarea>
 
   <button id="send-btn">Generate Questions</button>
+  <div class="difficulty-control" aria-label="Question difficulty">
+    <span class="difficulty-label">Difficulty</span>
+    <div class="difficulty-group">
+      <label class="difficulty-option">
+        <input type="radio" name="question-difficulty" value="low" />
+        <span>Low</span>
+      </label>
+      <label class="difficulty-option">
+        <input type="radio" name="question-difficulty" value="medium" checked />
+        <span>Medium</span>
+      </label>
+      <label class="difficulty-option">
+        <input type="radio" name="question-difficulty" value="high" />
+        <span>High</span>
+      </label>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -192,23 +204,6 @@
 
   <!--   Center area: feedback + scenario practice -->
   <div class="exam-nav-center">
-    <!--     Scenario-based practice (moved here from question card)-->
-    <div id="scenario-entry" class="scenario-section scenario-entry-inline">
-      <div id="scenario-entry-title" class="scenario-title">
-        <!--        Scenario Practice (Redo Incorrect Questions)-->
-      </div>
-      <div id="scenario-entry-desc" class="scenario-desc">
-        You can click the button below to generate similar questions using the same concept.
-      </div>
-      <button
-        id="scenario-entry-btn"
-        class="scenario-btn"
-        type="button"
-        disabled
-      >
-        Available after answering incorrectly
-      </button>
-    </div>
   </div>
 
   <!-- 右侧：下一题 + 问卷填写 -->
