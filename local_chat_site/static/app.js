@@ -16,6 +16,7 @@ let answeredFlags = [];
 let wrongQuestions = [];
 let hasShownRoundFeedback = false;
 let showCompletionOverview = false;
+let currentRoundId = null;
 
 let scenarioQuestionTexts = [];   // 姣忛亾棰樺搴旂殑涓€閬撯€滄儏鏅縼绉婚鈥濈殑棰樺共
 let scenarioAnswers = [];         // 姣忛亾棰樺搴旀儏鏅鐨勪綔绛?
@@ -259,7 +260,7 @@ const ZH_OVERRIDES = {
   grading_failed: "批改失败，请稍后再试。",
   network_error_grade: "网络错误，无法批改答案，请检查服务是否正常。",
   submit_answer: "提交答案",
-  kb_empty: "知识库为空，请先上传文件。",
+  kb_empty: "知识库当前为空，请先在上方上传文件。",
   delete_file_title: "从知识库删除此文件",
   delete_btn: "删除",
   no_metadata: "无元数据",
@@ -571,6 +572,7 @@ function setLanguage(lang) {
   if (authBtn) authBtn.innerText = label;
   applyAuthI18n();
   applyStaticI18n();
+  refreshMaterialEmptyHintLanguage();
   renderScoreChart();
   renderQuestionCard();
 }
@@ -1452,7 +1454,7 @@ async function requestRoundAnalysis(button, target) {
     const resp = await fetch("/api/round_analysis", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ all_items: buildFullRoundItems() }),
+      body: JSON.stringify({ all_items: buildFullRoundItems(), round_id: currentRoundId }),
     });
     const data = await resp.json();
     if (data.ok) {
@@ -2440,17 +2442,10 @@ function checkRoundAndRequestFeedback() {
   }
 
   const feedbackBox = document.getElementById("exam-feedback");
-  if (!wrongQuestions || wrongQuestions.length === 0) {
-    // No mistakes this round
-    if (feedbackBox) {
-      feedbackBox.innerText =
-        "All answers in this round are correct. No weak knowledge points detected. Keep going!";
-    }
-    return;
-  }
-
   if (feedbackBox) {
-    feedbackBox.innerText = "正在根据错题生成个性化反馈，请稍候...";
+    feedbackBox.innerText = wrongQuestions && wrongQuestions.length > 0
+      ? "正在根据错题生成个性化反馈，请稍候..."
+      : "All answers in this round are correct. Saving your practice history...";
   }
 
     fetch("/api/exam_feedback", {
@@ -2467,8 +2462,13 @@ function checkRoundAndRequestFeedback() {
 
     .then((res) => res.json())
     .then((data) => {
+      if (data.ok && data.round_id) {
+        currentRoundId = data.round_id;
+      }
       if (data.ok && data.feedback) {
         showExamFeedback(data.feedback);
+      } else if (data.ok && (!wrongQuestions || wrongQuestions.length === 0)) {
+        showExamFeedback("All answers in this round are correct. No weak knowledge points detected. Keep going!");
       } else {
         const msg = data.msg || "Unable to generate personalized feedback temporarily.";
         showExamFeedback(msg);
@@ -2503,6 +2503,7 @@ function setQuestions(rawText) {
   wrongQuestions = [];
   hasShownRoundFeedback = false;
   showCompletionOverview = false;
+  currentRoundId = null;
 
    // 猸?Reset scenario-based training states
   scenarioQuestionTexts = new Array(questionList.length).fill("");
@@ -2582,6 +2583,21 @@ function appendMessage(role, text) {
 }
 
 // Render selectable material list on the right panel
+function renderMaterialEmptyHint(container) {
+  if (!container) return;
+  container.innerHTML = `<div class='empty-hint material-empty-hint'>${t("kb_empty")}</div>`;
+}
+
+function refreshMaterialEmptyHintLanguage() {
+  const container = document.getElementById("material-list");
+  if (!container) return;
+  const hasMaterials = container.querySelector(".material-item");
+  const emptyHint = container.querySelector(".material-empty-hint");
+  if (!hasMaterials && emptyHint) {
+    renderMaterialEmptyHint(container);
+  }
+}
+
 function renderMaterialList(files) {
   const container = document.getElementById("material-list");
   if (!container) return;
@@ -2589,8 +2605,7 @@ function renderMaterialList(files) {
   container.innerHTML = "";
 
   if (!files || files.length === 0) {
-    container.innerHTML =
-      "<div class='empty-hint'>The knowledge base is currently empty. Please upload files above.</div>";
+    renderMaterialEmptyHint(container);
     return;
   }
 
@@ -2662,8 +2677,7 @@ function removeMaterialItemUI(labelEl) {
 
     // 3) If no materials remain, show empty message
     if (current === 0) {
-      container.innerHTML =
-        "<div class='empty-hint'>The knowledge base is currently empty. Please upload files above.</div>";
+      renderMaterialEmptyHint(container);
     }
   }
 }
@@ -3296,7 +3310,8 @@ function bindAuthUi() {
 
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
+    logoutBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
       logoutBtn.disabled = true;
       try {
         await postAuth("/api/auth/logout");
@@ -3305,6 +3320,19 @@ function bindAuthUi() {
         alert(err.message);
       } finally {
         logoutBtn.disabled = false;
+      }
+    });
+  }
+
+  const accountChip = document.getElementById("account-chip");
+  if (accountChip) {
+    accountChip.addEventListener("click", () => {
+      window.location.href = "/profile";
+    });
+    accountChip.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        window.location.href = "/profile";
       }
     });
   }
@@ -3391,6 +3419,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 鍒濇鍔犺浇鏃惰幏鍙栫煡璇嗗簱缁熻 + 鏂囩尞鍒楄〃
+  refreshMaterialEmptyHintLanguage();
   refreshKbStats();
   // 馃啎 鍚屾椂鎶婅繃寰€璇曞嵎棰樺簱涔熷姞杞藉嚭鏉?
   loadPastExamDb();

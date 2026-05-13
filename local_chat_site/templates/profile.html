@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile - MetaThink AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="profile-body">
+  <header class="profile-topbar">
+    <a class="profile-brand" href="/">
+      <img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="MetaThink AI logo" />
+      MetaThink AI
+    </a>
+    <a class="profile-back-link" href="/">Back to Practice</a>
+  </header>
+
+  <main class="profile-page">
+    <section class="profile-hero">
+      <div id="profile-avatar" class="profile-avatar">U</div>
+      <h1 id="profile-username">User</h1>
+      <p id="profile-email">Loading profile...</p>
+    </section>
+
+    <section class="profile-grid">
+      <article class="profile-card profile-info-card">
+        <div class="profile-card-header">
+          <h2>Basic Information</h2>
+          <button id="change-password-toggle" class="profile-primary-btn" type="button">Change Password</button>
+        </div>
+        <div class="profile-info-list">
+          <div><span>Username</span><strong id="profile-info-username">--</strong></div>
+          <div><span>Email</span><strong id="profile-info-email">--</strong></div>
+          <div><span>User ID</span><strong id="profile-info-id">--</strong></div>
+          <div><span>Practice Rounds</span><strong id="profile-info-rounds">0</strong></div>
+        </div>
+
+        <form id="password-form" class="profile-password-form hidden">
+          <label>Current password
+            <input id="current-password" type="password" autocomplete="current-password" required />
+          </label>
+          <label>New password
+            <input id="new-password" type="password" autocomplete="new-password" required />
+          </label>
+          <label>Confirm new password
+            <input id="confirm-password" type="password" autocomplete="new-password" required />
+          </label>
+          <div id="password-message" class="profile-message"></div>
+          <button class="profile-primary-btn" type="submit">Update Password</button>
+        </form>
+      </article>
+
+      <article class="profile-card profile-history-card">
+        <div class="profile-card-header">
+          <h2>Question History</h2>
+          <span id="history-count" class="profile-muted">0 rounds</span>
+        </div>
+        <div id="round-list" class="round-list"></div>
+      </article>
+    </section>
+
+    <section id="round-detail" class="profile-card round-detail hidden">
+      <div class="profile-card-header">
+        <div>
+          <h2 id="round-detail-title">Round Detail</h2>
+          <p id="round-detail-meta" class="profile-muted"></p>
+        </div>
+        <button id="close-round-detail" class="profile-secondary-btn" type="button">Close</button>
+      </div>
+      <div id="round-analysis" class="round-analysis"></div>
+      <div id="round-answers" class="round-answers"></div>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='profile.js') }}"></script>
+</body>
+</html>

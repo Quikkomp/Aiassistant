@@ -111,7 +111,7 @@
       <div class="topbar-right">
         <button id="lang-toggle-btn" class="small-btn lang-toggle-btn" type="button">EN</button>
         <button id="guest-login-btn" class="small-btn guest-login-btn hidden" type="button">Login</button>
-        <div id="account-chip" class="account-chip {% if not auth.authenticated %}hidden{% endif %}">
+        <div id="account-chip" class="account-chip {% if not auth.authenticated %}hidden{% endif %}" role="button" tabindex="0" title="Open profile">
           <span id="account-avatar" class="account-avatar">{{ (auth.username[:1] if auth.username else "")|upper }}</span>
           <span id="account-name">{{ auth.username or "" }}</span>
           <button id="logout-btn" class="logout-btn" type="button">Logout</button>
@@ -244,7 +244,7 @@
     <div class="material-list-box">
       <div class="material-list-title">Select reference materials (enabled by default)</div>
       <div id="material-list" class="material-list">
-        <!-- Dynamically filled by app.js -->
+        <div class="empty-hint material-empty-hint">The knowledge base is currently empty. Please upload files.</div>
       </div>
       <div class="material-list-actions">
         <button id="select-all-materials" class="small-btn" type="button">Select All</button>

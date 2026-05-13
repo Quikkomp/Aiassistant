@@ -70,9 +70,15 @@ def init_db():
                 total_questions INTEGER,
                 correct_count   INTEGER,
                 partial_count   INTEGER,
-                wrong_count     INTEGER
+                wrong_count     INTEGER,
+                analysis        LONGTEXT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """)
+
+        try:
+            cur.execute("ALTER TABLE user_rounds ADD COLUMN analysis LONGTEXT;")
+        except Exception:
+            pass
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_answers (
@@ -173,6 +179,34 @@ def is_unique_violation(exc):
     return isinstance(exc, MySQLIntegrityError) or isinstance(exc, sqlite3.IntegrityError)
 
 
+def get_profile_user():
+    user_id = require_auth_user_id()
+    if not user_id:
+        return None
+    conn, db_kind = get_auth_db_conn()
+    cur = conn.cursor()
+    placeholder = "?" if db_kind == "sqlite" else "%s"
+    cur.execute(
+        f"""
+        SELECT username, email, public_user_id, created_at
+        FROM app_users
+        WHERE public_user_id = {placeholder};
+        """,
+        (user_id,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        return None
+    return {
+        "username": row[0],
+        "email": row[1],
+        "public_user_id": row[2],
+        "created_at": str(row[3]) if row[3] is not None else "",
+    }
+
+
 app = Flask(__name__)
 # 用于 Flask session（建议在服务器上用环境变量改成更安全的值）
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
@@ -208,6 +242,13 @@ def current_auth_payload():
     if not username:
         return {"authenticated": False, "username": None}
     return {"authenticated": True, "username": username}
+
+
+def require_auth_user_id():
+    user_id = session.get("auth_user_id")
+    if not user_id:
+        return None
+    return user_id
 
 
 def normalize_username(username: str) -> str:
@@ -281,6 +322,25 @@ def save_round_to_db(user_id: str, round_score, all_items):
             )
         )
 
+    conn.commit()
+    cur.close()
+    conn.close()
+    return round_id
+
+
+def update_round_analysis(round_id, user_id: str, analysis: str):
+    if not round_id or not analysis:
+        return
+    conn = get_db_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE user_rounds
+        SET analysis = %s
+        WHERE id = %s AND user_id = %s;
+        """,
+        (analysis, round_id, user_id),
+    )
     conn.commit()
     cur.close()
     conn.close()
@@ -434,6 +494,13 @@ def index():
     return render_template("index.html", auth=current_auth_payload())
 
 
+@app.route("/profile")
+def profile_page():
+    if not require_auth_user_id():
+        return render_template("index.html", auth=current_auth_payload())
+    return render_template("profile.html", auth=current_auth_payload())
+
+
 @app.route("/api/auth/status", methods=["GET"])
 def auth_status():
     return jsonify({"ok": True, **current_auth_payload()})
@@ -542,6 +609,171 @@ def auth_guest():
 def auth_logout():
     session.clear()
     return jsonify({"ok": True})
+
+
+@app.route("/api/profile", methods=["GET"])
+def api_profile():
+    user = get_profile_user()
+    if not user:
+        return jsonify({"ok": False, "msg": "Please sign in first."}), 401
+
+    total_rounds = 0
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM user_rounds WHERE user_id = %s;", (user["public_user_id"],))
+        total_rounds = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Profile round count failed:", e)
+
+    return jsonify({"ok": True, "user": user, "total_rounds": total_rounds})
+
+
+@app.route("/api/profile/change_password", methods=["POST"])
+def api_change_password():
+    user_id = require_auth_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "msg": "Please sign in first."}), 401
+
+    data = request.get_json(force=True) or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+    confirm_password = data.get("confirm_password") or ""
+
+    if len(new_password) < 6:
+        return jsonify({"ok": False, "msg": "New password must be at least 6 characters."}), 400
+    if new_password != confirm_password:
+        return jsonify({"ok": False, "msg": "New passwords do not match."}), 400
+
+    try:
+        conn, db_kind = get_auth_db_conn()
+        cur = conn.cursor()
+        placeholder = "?" if db_kind == "sqlite" else "%s"
+        cur.execute(
+            f"SELECT password_hash FROM app_users WHERE public_user_id = {placeholder};",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row or not check_password_hash(row[0], current_password):
+            cur.close()
+            conn.close()
+            return jsonify({"ok": False, "msg": "Current password is incorrect."}), 401
+
+        new_hash = generate_password_hash(new_password)
+        cur.execute(
+            f"UPDATE app_users SET password_hash = {placeholder} WHERE public_user_id = {placeholder};",
+            (new_hash, user_id),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/api/profile/rounds", methods=["GET"])
+def api_profile_rounds():
+    user_id = require_auth_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "msg": "Please sign in first."}), 401
+
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, created_at, round_score, total_questions, correct_count,
+                   partial_count, wrong_count, analysis
+            FROM user_rounds
+            WHERE user_id = %s
+            ORDER BY created_at DESC, id DESC;
+            """,
+            (user_id,),
+        )
+        rounds = []
+        for row in cur.fetchall():
+            rounds.append({
+                "id": row[0],
+                "created_at": str(row[1]),
+                "round_score": row[2],
+                "total_questions": row[3],
+                "correct_count": row[4],
+                "partial_count": row[5],
+                "wrong_count": row[6],
+                "has_analysis": bool(row[7]),
+            })
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True, "rounds": rounds})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/api/profile/rounds/<int:round_id>", methods=["GET"])
+def api_profile_round_detail(round_id):
+    user_id = require_auth_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "msg": "Please sign in first."}), 401
+
+    try:
+        conn = get_db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, created_at, round_score, total_questions, correct_count,
+                   partial_count, wrong_count, analysis
+            FROM user_rounds
+            WHERE id = %s AND user_id = %s;
+            """,
+            (round_id, user_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            conn.close()
+            return jsonify({"ok": False, "msg": "Round not found."}), 404
+
+        round_info = {
+            "id": row[0],
+            "created_at": str(row[1]),
+            "round_score": row[2],
+            "total_questions": row[3],
+            "correct_count": row[4],
+            "partial_count": row[5],
+            "wrong_count": row[6],
+            "analysis": row[7] or "",
+        }
+
+        cur.execute(
+            """
+            SELECT question_index, question_type, verdict, question_text,
+                   student_answer, evaluation, created_at
+            FROM user_answers
+            WHERE round_id = %s AND user_id = %s
+            ORDER BY question_index ASC, id ASC;
+            """,
+            (round_id, user_id),
+        )
+        answers = []
+        for ans in cur.fetchall():
+            answers.append({
+                "question_index": ans[0],
+                "question_type": ans[1],
+                "verdict": ans[2],
+                "question": ans[3],
+                "student_answer": ans[4],
+                "evaluation": ans[5],
+                "created_at": str(ans[6]),
+            })
+
+        cur.close()
+        conn.close()
+        return jsonify({"ok": True, "round": round_info, "answers": answers})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
 
 @app.route("/api/material_stats", methods=["GET"])
 def material_stats():
@@ -863,15 +1095,17 @@ def exam_feedback():
     # ⭐ 新增：把本轮答题记录写入数据库（异常不影响原功能）
     try:
         user_id = get_current_user_id()
-        save_round_to_db(user_id=user_id, round_score=round_score, all_items=all_items)
+        round_id = save_round_to_db(user_id=user_id, round_score=round_score, all_items=all_items)
     except Exception as e:
         print("⚠️ save_round_to_db failed:", e)
 
     # ✅ 保持原来的个性化反馈逻辑
+    round_id = locals().get("round_id")
+
     try:
         agent = get_rag_agent_for_current_user()
         feedback_text = agent.summarize_wrong_questions(wrong_items)
-        return jsonify({"ok": True, "feedback": feedback_text})
+        return jsonify({"ok": True, "feedback": feedback_text, "round_id": round_id})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -880,6 +1114,7 @@ def exam_feedback():
 def round_analysis():
     data = request.get_json(silent=True) or {}
     all_items = data.get("all_items") or []
+    round_id = data.get("round_id")
 
     if not all_items:
         return jsonify({"ok": False, "msg": "No completed round data was provided."}), 400
@@ -887,6 +1122,10 @@ def round_analysis():
     try:
         agent = get_rag_agent_for_current_user()
         analysis = agent.analyze_full_round(all_items)
+        try:
+            update_round_analysis(round_id, get_current_user_id(), analysis)
+        except Exception as e2:
+            print("鈿狅笍 update_round_analysis failed:", e2)
         return jsonify({"ok": True, "analysis": analysis})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
