@@ -335,21 +335,22 @@ function applyAuthI18n() {
   const registerForm = document.getElementById("register-form");
 
   if (loginCopy) {
-    loginCopy.querySelector(".auth-kicker").innerText = zh ? "EXERCISE AGENT 入口" : "EXERCISE AGENT ACCESS";
-    loginCopy.querySelector("h1").innerText = zh ? "欢迎回到 Exercise Agent" : "Welcome back to Exercise Agent";
+    const loginKicker = loginCopy.querySelector(".auth-kicker");
+    if (loginKicker) loginKicker.remove();
+    loginCopy.querySelector("h1").innerText = zh ? "欢迎来到 Exercise Generator" : "Welcome to Exercise Generator";
     const items = loginCopy.querySelectorAll(".auth-benefits div");
     const text = zh
       ? [
-          ["练习历史", "回到之前生成的题目、答案、分数和反馈记录。"],
-          ["个人学习空间", "集中管理上传资料、题库、练习和 AI 反馈。"],
-          ["智能出题", "基于课程文件和模拟题生成有针对性的练习。"],
-          ["安全账户", "保存学习进度，并保护你上传的学习内容。"],
+          ["智能出题", "基于课程文件和模拟题生成有针对性的练习"],
+          ["个人学习空间", "集中管理上传资料、题库、练习和 AI 反馈"],
+          ["回顾", "回到之前生成的题目、答案、分数和反馈记录"],
+          ["安全账户", "保存学习进度，并保护你上传的学习内容"],
         ]
       : [
-          ["Saved practice history", "Return to generated questions, answers, scores, and feedback from earlier sessions."],
-          ["Personal study workspace", "Manage uploaded materials, question banks, exam practice, and AI feedback in one place."],
-          ["Question generation", "Create targeted exercises from your own course files and selected model questions."],
-          ["Secure account", "Keep your learning progress connected while protecting your uploaded study content."],
+          ["Question generation", "Create targeted exercises from your own course files and selected model questions"],
+          ["Personal study workspace", "Manage uploaded materials, question banks, exam practice, and AI feedback in one place"],
+          ["Review", "Return to generated questions, answers, scores and feedback records from earlier sessions"],
+          ["Secure account", "Keep your learning progress connected while protecting your uploaded study content"],
         ];
     items.forEach((item, idx) => {
       if (!text[idx]) return;
@@ -359,21 +360,22 @@ function applyAuthI18n() {
   }
 
   if (registerCopy) {
-    registerCopy.querySelector(".auth-kicker").innerText = zh ? "创建账户" : "CREATE AN ACCOUNT";
-    registerCopy.querySelector("h1").innerText = zh ? "开始使用 Exercise Agent 练习" : "Start practicing with Exercise Agent";
+    const registerKicker = registerCopy.querySelector(".auth-kicker");
+    if (registerKicker) registerKicker.remove();
+    registerCopy.querySelector("h1").innerText = zh ? "开始使用 Exercise Generator 练习" : "Start practicing with Exercise Generator";
     const items = registerCopy.querySelectorAll(".auth-benefits div");
     const text = zh
       ? [
-          ["建立练习空间", "为课程资料和生成练习建立个人账户。"],
-          ["从反馈中学习", "每轮练习后查看批改结果、解释和薄弱点。"],
-          ["AI 辅助学习", "使用面向出题、批改和复习指导的智能助手。"],
-          ["随时继续", "注册后，你的资料和练习记录会保留下来。"],
+          ["建立练习空间", "为课程资料和生成练习建立个人账户"],
+          ["从反馈中学习", "每轮练习后查看批改结果、解释和薄弱点"],
+          ["AI 辅助学习", "使用面向出题、批改和复习指导的智能助手"],
+          ["随时继续", "注册后，你的资料和练习记录会保留下来"],
         ]
       : [
-          ["Build your practice space", "Set up a personal account for uploaded course resources and generated exercises."],
-          ["Learn from feedback", "Review grading results, explanations, and weak points after each practice round."],
-          ["Study with AI", "Use an agent designed for question generation, answer checking, and guided revision."],
-          ["Continue anytime", "After joining, your saved materials and practice records stay available when you return."],
+          ["Build your practice space", "Set up a personal account for uploaded course resources and generated exercises"],
+          ["Learn from feedback", "Review grading results, explanations, and weak points after each practice round"],
+          ["Study with AI", "Use an agent designed for question generation, answer checking, and guided revision"],
+          ["Continue anytime", "After joining, your saved materials and practice records stay available when you return"],
         ];
     items.forEach((item, idx) => {
       if (!text[idx]) return;
@@ -383,12 +385,14 @@ function applyAuthI18n() {
   }
 
   if (loginForm) {
-    loginForm.querySelector(".auth-badge").innerText = zh ? "登录" : "LOGIN";
-    loginForm.querySelector("h2").innerText = zh ? "登录 Exercise Agent" : "Sign in to Exercise Agent";
+    const loginBadge = loginForm.querySelector(".auth-badge");
+    if (loginBadge) loginBadge.remove();
+    loginForm.querySelector("h2").innerText = zh ? "登录 Exercise Generator" : "Sign in to Exercise Generator";
     loginForm.querySelector("p").innerText = zh ? "使用用户名和密码进入你的练习空间" : "Use your username and password to access your exercise workspace";
     loginForm.querySelector("label").childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
     document.getElementById("login-username").placeholder = zh ? "输入用户名" : "Enter your username";
-    loginForm.querySelector("#login-username + span").innerText = zh ? "输入你创建账户时使用的用户名" : "Enter the username you used when creating your account";
+    const usernameHint = loginForm.querySelector("#login-username + span");
+    if (usernameHint) usernameHint.remove();
     loginForm.querySelectorAll("label")[1].childNodes[0].textContent = zh ? "密码\n              " : "Password\n              ";
     document.getElementById("login-password").placeholder = zh ? "输入密码" : "Enter your password";
     loginForm.querySelector(".auth-check span").innerText = zh ? "记住我" : "Remember me";
@@ -400,8 +404,9 @@ function applyAuthI18n() {
   }
 
   if (registerForm) {
-    registerForm.querySelector(".auth-badge").innerText = zh ? "注册" : "REGISTER";
-    registerForm.querySelector("h2").innerText = zh ? "创建 Exercise Agent 账户" : "Create your Exercise Agent account";
+    const registerBadge = registerForm.querySelector(".auth-badge");
+    if (registerBadge) registerBadge.remove();
+    registerForm.querySelector("h2").innerText = zh ? "创建 Exercise Generator 账户" : "Create your Exercise Generator account";
     registerForm.querySelector("p").innerText = zh ? "填写表单，创建你的个人练习空间" : "Complete the form below to create your personal exercise workspace";
     const labels = registerForm.querySelectorAll("label");
     labels[0].childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
@@ -813,6 +818,20 @@ function appendQaBubble(role, text) {
   win.scrollTop = win.scrollHeight;
 }
 
+function setQaSendLoading(btn, loading) {
+  if (!btn) return;
+  if (loading) {
+    btn.dataset.readyLabel = btn.innerText || "→";
+    btn.innerText = "";
+    btn.classList.add("qa-send-loading");
+    btn.disabled = true;
+  } else {
+    btn.disabled = false;
+    btn.classList.remove("qa-send-loading");
+    btn.innerText = btn.dataset.readyLabel || "→";
+  }
+}
+
 // 鎶娾€滃悜 AI 鎻愰棶鈥濆尯鍩熺殑闂鍙戠粰鍚庣
 // 鎶娾€滄湰棰樿繘涓€姝ユ彁闂€濆尯鍩熺殑闂鍙戠粰鍚庣 / 鎴栫洿鎺ュ嚭鎸夐挳
 async function sendQaQuestion() {
@@ -900,9 +919,7 @@ async function sendQaQuestion() {
   }
 
   // 鉁?鎯呭喌浜岋細姝ｅ父鎻愰棶锛岀户缁蛋鍘熸潵鐨?/api/qa 娴佺▼
-  btn.disabled = true;
-  const oldLabel = btn.innerText;
-  btn.innerText = "鎬濊€冧腑...";
+  setQaSendLoading(btn, true);
 
   try {
     const res = await fetch("/api/qa", {
@@ -944,8 +961,7 @@ async function sendQaQuestion() {
     console.error(e);
     appendQaBubble("assistant", t("qa_request_failed"));
   } finally {
-    btn.disabled = false;
-    btn.innerText = oldLabel || "→";
+    setQaSendLoading(btn, false);
     input.value = "";
   }
 }
@@ -2335,9 +2351,7 @@ if (isUserNoMoreQuestions) {
 
 
 // 鉁?Case 2: User continues asking 鈥?go through /api/qa flow
-btn.disabled = true;
-const oldLabel = btn.innerText;
-btn.innerText = "思考中...";
+setQaSendLoading(btn, true);
 
 const question = scenarioQuestionTexts[currentScenarioIndex] || "";
 const selectedDocs = Array.from(
@@ -2384,8 +2398,7 @@ try {
   console.error(err);
   appendScenarioQaBubble("assistant", "鈿狅笍 Request failed, please try again later.");
 } finally {
-  btn.disabled = false;
-  btn.innerText = oldLabel;
+  setQaSendLoading(btn, false);
 }
 }
 

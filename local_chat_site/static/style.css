@@ -2768,6 +2768,11 @@ html:lang(zh-CN) .auth-form h2 {
   font-weight: 700;
 }
 
+#login-form label {
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
 .auth-form label > span {
   color: #64748b;
   font-weight: 400;
@@ -3549,12 +3554,33 @@ button#scenario-entry-btn.question-scenario-btn:disabled {
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15) !important;
 }
 
-#qa-send-btn {
+#qa-send-btn,
+#scenario-qa-send-btn {
   width: 48px !important;
   min-width: 48px !important;
   height: 48px !important;
   padding: 0 !important;
   border-radius: 14px !important;
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#qa-send-btn.qa-send-loading::before,
+#scenario-qa-send-btn.qa-send-loading::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(255, 255, 255, 0.55);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+  animation: qa-send-spin 0.7s linear infinite;
+}
+
+@keyframes qa-send-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .exam-nav-wrapper {

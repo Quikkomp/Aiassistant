@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Local Model Knowledge Base Assistant</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=qa-spinner-20260524" />
 </head>
 <body class="{% if not auth.authenticated %}auth-open{% endif %}">
   <section id="auth-screen" class="auth-screen {% if auth.authenticated %}hidden{% endif %}" aria-label="Account access">
@@ -18,24 +18,22 @@
     <div class="auth-shell">
       <aside class="auth-visual">
         <div class="auth-visual-content auth-copy auth-copy-login">
-          <div class="auth-kicker">EXERCISE AGENT ACCESS</div>
-          <h1>Welcome back to Exercise Agent</h1>
+          <h1>Welcome to Exercise Generator</h1>
           <div class="auth-benefits">
-            <div><strong>Saved practice history</strong><span>Return to generated questions, answers, scores, and feedback from earlier sessions.</span></div>
-            <div><strong>Personal study workspace</strong><span>Manage uploaded materials, question banks, exam practice, and AI feedback in one place.</span></div>
-            <div><strong>Question generation</strong><span>Create targeted exercises from your own course files and selected model questions.</span></div>
-            <div><strong>Secure account</strong><span>Keep your learning progress connected while protecting your uploaded study content.</span></div>
+            <div><strong>Question generation</strong><span>Create targeted exercises from your own course files and selected model questions</span></div>
+            <div><strong>Personal study workspace</strong><span>Manage uploaded materials, question banks, exam practice, and AI feedback in one place</span></div>
+            <div><strong>Review</strong><span>Return to generated questions, answers, scores and feedback records from earlier sessions</span></div>
+            <div><strong>Secure account</strong><span>Keep your learning progress connected while protecting your uploaded study content</span></div>
           </div>
         </div>
 
         <div class="auth-visual-content auth-copy auth-copy-register">
-          <div class="auth-kicker">CREATE AN ACCOUNT</div>
-          <h1>Start practicing with Exercise Agent</h1>
+          <h1>Start practicing with Exercise Generator</h1>
           <div class="auth-benefits">
-            <div><strong>Build your practice space</strong><span>Set up a personal account for uploaded course resources and generated exercises.</span></div>
-            <div><strong>Learn from feedback</strong><span>Review grading results, explanations, and weak points after each practice round.</span></div>
-            <div><strong>Study with AI</strong><span>Use an agent designed for question generation, answer checking, and guided revision.</span></div>
-            <div><strong>Continue anytime</strong><span>After joining, your saved materials and practice records stay available when you return.</span></div>
+            <div><strong>Build your practice space</strong><span>Set up a personal account for uploaded course resources and generated exercises</span></div>
+            <div><strong>Learn from feedback</strong><span>Review grading results, explanations, and weak points after each practice round</span></div>
+            <div><strong>Study with AI</strong><span>Use an agent designed for question generation, answer checking, and guided revision</span></div>
+            <div><strong>Continue anytime</strong><span>After joining, your saved materials and practice records stay available when you return</span></div>
           </div>
         </div>
       </aside>
@@ -43,13 +41,11 @@
       <section class="auth-card">
         <div class="auth-card-inner">
           <form id="login-form" class="auth-form" autocomplete="on">
-            <div class="auth-badge">LOGIN</div>
-            <h2>Sign in to Exercise Agent</h2>
+            <h2>Sign in to Exercise Generator</h2>
             <p>Use your username and password to access your exercise workspace</p>
 
             <label>Username
               <input id="login-username" name="username" type="text" placeholder="Enter your username" autocomplete="username" required />
-              <span>Enter the username you used when creating your account</span>
             </label>
 
             <label>Password
@@ -68,8 +64,7 @@
           </form>
 
           <form id="register-form" class="auth-form hidden" autocomplete="on">
-            <div class="auth-badge">REGISTER</div>
-            <h2>Create your Exercise Agent account</h2>
+            <h2>Create your Exercise Generator account</h2>
             <p>Complete the form below to create your personal exercise workspace</p>
 
             <label>Username
@@ -447,6 +442,6 @@
 </div>
 
 
-<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=qa-spinner-20260524"></script>
 </body>
 </html>
