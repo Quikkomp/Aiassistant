@@ -3227,6 +3227,32 @@ body:not(.auth-register) .auth-copy-register {
   min-height: 150px;
 }
 
+/* Generated questions should follow their content instead of reserving a
+   fixed 500px canvas. This keeps the question navigation in view while still
+   allowing long questions and explanations to grow naturally. */
+.chat-window.question-layout-active {
+  flex: 0 0 auto;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: visible;
+}
+
+.chat-window.question-layout-active .question-card-wrapper {
+  flex: 0 0 auto;
+  align-items: flex-start;
+}
+
+.chat-window.question-layout-active .question-card {
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+.chat-window.question-layout-active .question-card-body {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow-y: visible;
+}
+
 .question-card-header {
   display: flex;
   align-items: center;

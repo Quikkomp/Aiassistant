@@ -974,6 +974,7 @@ function renderQuestionCard() {
   const container = document.getElementById("chat-window");
   if (!container) return;
 
+  container.classList.remove("question-layout-active");
   container.innerHTML = "";
 
   // 杩樻病鏈夐鐩椂鐨勬彁绀?
@@ -998,6 +999,9 @@ function renderQuestionCard() {
     renderCompletionOverview(container);
     return;
   }
+
+  // Let generated question cards size themselves from their actual content.
+  container.classList.add("question-layout-active");
 
   const total = questionList.length;
   const idx = Math.max(0, Math.min(currentQuestionIndex, total - 1));
