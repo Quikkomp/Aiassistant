@@ -511,8 +511,8 @@ function applyStaticI18n() {
   const kbTitle = document.querySelector(".bordered-box h2");
   if (kbTitle) kbTitle.innerText = zh ? "知识库" : "Knowledge Base";
   const hints = document.querySelectorAll(".hint");
-  if (hints[0]) hints[0].innerHTML = zh ? "支持上传 <strong>txt, md, pdf, docx, pptx</strong> 等格式文件。" : "Supports uploading <strong>txt, md, pdf, docx, pptx</strong> and other formats.";
-  if (hints[1]) hints[1].innerHTML = zh ? "支持上传 <strong>任意格式</strong> 的历年试卷文件（pdf、docx、pptx 等），系统将基于其生成相似题目。" : "Supports uploading <strong>any type</strong> of previous model files (pdf, docx, pptx, etc.). The system will generate similar questions based on the model.";
+  if (hints[0]) hints[0].innerHTML = zh ? "支持上传 <strong>txt, md, pdf, docx, pptx、图片</strong> 等格式文件。" : "Supports uploading <strong>txt, md, pdf, docx, pptx, images</strong> and other formats.";
+  if (hints[1]) hints[1].innerHTML = zh ? "支持上传 <strong>任意格式</strong> 的历年试卷文件（pdf、docx、pptx、图片等），系统将基于其生成相似题目。" : "Supports uploading <strong>any type</strong> of previous model files (pdf, docx, pptx, images, etc.). The system will generate similar questions based on the model.";
 
   const materialTitle = document.querySelector(".material-list-title");
   if (materialTitle) materialTitle.innerText = zh ? "选择参考资料（默认全选）" : "Select reference materials (enabled by default)";
@@ -601,6 +601,48 @@ function parseQuestionsFromText(rawText) {
     results.push(text);
   }
   return results;
+}
+
+function getSelectedQuestionTypes() {
+  const selected = Array.from(
+    document.querySelectorAll('input[name="question-type"]:checked')
+  ).map((input) => input.value);
+  return selected.length ? selected : ["fill_blank"];
+}
+
+function isMultipleChoiceQuestion(rawText) {
+  const choiceMatches = String(rawText || "").match(/^\s*[A-D]\s*[\).:：、]\s*.+$/gim);
+  return !!choiceMatches && choiceMatches.length >= 2;
+}
+
+function inferQuestionType(rawText) {
+  if (isMultipleChoiceQuestion(rawText)) return "multiple_choice";
+  if (/_{3,}|\[\s*blank\s*\]|\(\s*blank\s*\)/i.test(String(rawText || ""))) {
+    return "fill_blank";
+  }
+  return activeQuestionType && activeQuestionType !== "mixed" ? activeQuestionType : "short_answer";
+}
+
+function renderFeedbackText(container, text) {
+  container.innerHTML = "";
+  const raw = String(text || "").trim();
+  if (!raw) return;
+
+  raw.split(/\r?\n/).forEach((line) => {
+    const div = document.createElement("div");
+    const trimmed = line.trim();
+    if (/^Result\s*:/i.test(trimmed)) {
+      div.className = "feedback-line feedback-result";
+    } else if (/^Reference answer\s*:/i.test(trimmed)) {
+      div.className = "feedback-line feedback-reference";
+    } else if (/^Brief explanation\s*:/i.test(trimmed)) {
+      div.className = "feedback-line feedback-explanation";
+    } else {
+      div.className = "feedback-line";
+    }
+    div.textContent = line;
+    container.appendChild(div);
+  });
 }
 
 // ====== Score helpers ======
@@ -1037,7 +1079,8 @@ function renderQuestionCard() {
   // 棰樺共
   const body = document.createElement("div");
   body.className = "question-card-body";
-  if (activeQuestionType === "multiple_choice") {
+  const currentQuestionType = inferQuestionType(questionList[idx]);
+  if (currentQuestionType === "multiple_choice") {
     renderMultipleChoiceQuestionBody(body, questionList[idx], idx);
   } else {
     body.innerText = questionList[idx];
@@ -1051,7 +1094,7 @@ function renderQuestionCard() {
   answerLabel.className = "answer-label";
   answerLabel.innerText = t("your_answer");
 
-  if (activeQuestionType === "multiple_choice") {
+  if (currentQuestionType === "multiple_choice") {
     answerArea.classList.add("answer-area-hidden");
   } else {
     answerArea.appendChild(answerLabel);
@@ -1069,7 +1112,7 @@ function renderQuestionCard() {
 
   card.appendChild(header);
   card.appendChild(body);
-  if (activeQuestionType !== "multiple_choice") {
+  if (currentQuestionType !== "multiple_choice") {
     card.appendChild(answerArea);
   }
 
@@ -1155,7 +1198,7 @@ function renderQuestionCard() {
   const resultBox = document.createElement("div");
   resultBox.className = "grade-result";
   if (questionEvaluations[idx]) {
-    resultBox.innerText = questionEvaluations[idx];
+    renderFeedbackText(resultBox, questionEvaluations[idx]);
   }
 
   // 绮捐鍐呭灞曠ず鍖哄煙锛堢幇鍦ㄥ彧鐢ㄦ潵淇濆瓨鏂囨湰锛屼笉鍦ㄩ鍗￠噷鐩存帴鏄剧ず锛?
@@ -1725,11 +1768,7 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
     return;
   }
 
-  // 棰樺瀷锛氭部鐢ㄥ乏渚у崟閫夋锛堣鍚庣鐭ラ亾鏄～绌?/ 閫夋嫨 / 绠€绛旓級
-  const typeInput = document.querySelector(
-    'input[name="question-type"]:checked'
-  );
-  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
+  const questionType = inferQuestionType(questionText);
 
   // 鍕鹃€夌殑鏂囩尞鍒楄〃锛堜笌鐢熸垚棰樼洰鏃朵繚鎸佷竴鑷达級
   const selectedDocs = Array.from(
@@ -1770,7 +1809,7 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
       questionEvaluations[idx] = feedback;
       if (resultBox) {
         // 鉁?鍙洿鏂板綋鍓嶅崱鐗囨寜閽笅鏂圭殑缁撴灉鍖哄煙
-        resultBox.innerText = feedback;
+        renderFeedbackText(resultBox, feedback);
       }
 
       // 2锔忊儯 瑙ｆ瀽鈥滅粨鏋滐細姝ｇ‘ / 閮ㄥ垎姝ｇ‘ / 閿欒鈥?
@@ -2969,10 +3008,10 @@ async function sendMessage() {
   const btn = document.getElementById("send-btn");
   const text = input.value.trim();
 
-  // Question type: read from radio input
-  const typeInput = document.querySelector('input[name="question-type"]:checked');
-  const questionType = typeInput ? typeInput.value : "fill_blank";
-  activeQuestionType = questionType;
+  // Question type: support selecting one or multiple types.
+  const questionTypes = getSelectedQuestionTypes();
+  const questionType = questionTypes.join(",");
+  activeQuestionType = questionTypes.length === 1 ? questionTypes[0] : "mixed";
 
   // Number of questions: read from number input
   const countInput = document.getElementById("question-count");

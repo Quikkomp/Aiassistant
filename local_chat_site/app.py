@@ -3,6 +3,7 @@ import re
 import sqlite3
 import sys
 import uuid
+import hashlib
 from typing import List
 from flask import Flask, render_template, request, jsonify, session
 from werkzeug.utils import secure_filename
@@ -1231,6 +1232,15 @@ def past_exam_upload():
     # 返回当前完整题库，方便前端覆盖本地缓存
     agent = get_rag_agent_for_current_user()
     all_questions = agent.list_past_exam_questions()
+    if saved_files and not imported_questions:
+        return jsonify({
+            "ok": False,
+            "saved_files": saved_files,
+            "imported_count": 0,
+            "questions": all_questions,
+            "msg": "文件已上传，但没有提取到题目。请确认文件清晰可读，或上传包含题干文字/图片的试卷；系统已尝试 OCR 与 GPT 图像识别。",
+        }), 422
+
     return jsonify({
         "ok": True,
         "saved_files": saved_files,

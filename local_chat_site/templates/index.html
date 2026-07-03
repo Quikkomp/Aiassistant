@@ -131,17 +131,17 @@
 
             <div class="question-type-group">
               <label class="question-type-option">
-                <input type="radio" name="question-type" value="fill_blank" checked />
+                <input type="checkbox" name="question-type" value="fill_blank" checked />
                 <span>Fill-in-the-blank</span>
               </label>
 
               <label class="question-type-option">
-                <input type="radio" name="question-type" value="multiple_choice" />
+                <input type="checkbox" name="question-type" value="multiple_choice" />
                 <span>Multiple Choice</span>
               </label>
 
               <label class="question-type-option">
-                <input type="radio" name="question-type" value="short_answer" />
+                <input type="checkbox" name="question-type" value="short_answer" />
                 <span>Short Answer</span>
               </label>
             </div>
@@ -223,12 +223,12 @@
   <div class="bordered-box">
     <h2>Knowledge Base</h2>
     <p class="hint">
-      Supports uploading <strong>txt, md, pdf, docx, pptx</strong> and other formats.
+      Supports uploading <strong>txt, md, pdf, docx, pptx, images</strong> and other formats.
     </p>
 
     <div class="upload-box">
       <label class="file-picker">
-        <input id="file-input" type="file" multiple />
+        <input id="file-input" type="file" multiple accept=".txt,.md,.pdf,.docx,.pptx,.png,.jpg,.jpeg,.bmp,.tif,.tiff" />
       </label>
       <button id="upload-btn">Upload to Knowledge Base</button>
     </div>
@@ -259,14 +259,14 @@
 
     <!-- Information text -->
     <p class="hint">
-      Supports uploading <strong>any type</strong> of previous model files (pdf, docx, pptx, etc.).
+      Supports uploading <strong>any type</strong> of previous model files (pdf, docx, pptx, images, etc.).
       The system will generate similar questions based on the model.
     </p>
 
     <!-- Upload area -->
     <div class="upload-box">
       <label class="file-picker">
-        <input id="past-exam-file-input" type="file" multiple />
+        <input id="past-exam-file-input" type="file" multiple accept=".txt,.md,.pdf,.docx,.pptx,.png,.jpg,.jpeg,.bmp,.tif,.tiff" />
       </label>
       <button id="past-exam-upload-btn" type="button">Upload Previous Files</button>
     </div>

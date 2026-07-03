@@ -1430,6 +1430,32 @@ body {
 
 
 /* 给生成的反馈文字添加底部间距 */
+.feedback-line {
+  margin: 4px 0;
+}
+
+.feedback-result {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #eef6ff;
+  color: #175cd3;
+  font-weight: 700;
+}
+
+.feedback-reference {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 4px solid #16a34a;
+  background: #ecfdf3;
+  color: #166534;
+  font-weight: 650;
+}
+
+.feedback-explanation {
+  color: #374151;
+}
+
 .exam-feedback {
   margin-top: 12px;  /* 为反馈文字添加顶部间距 */
   margin-bottom: 20px; /* 增加反馈文字的底部间距 */
@@ -2776,7 +2802,7 @@ html:lang(zh-CN) .auth-form h2 {
 .auth-form label > span {
   color: #64748b;
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 1.55;
 }
 
 .auth-form input[type="text"],

@@ -15,6 +15,9 @@ import sys
 import shutil
 import requests
 import json
+import base64
+import mimetypes
+import tempfile
 from datetime import datetime
 from PIL import Image
 import pytesseract
@@ -192,7 +195,7 @@ SYSTEM_PROMPT = """
    - 若不同文献观点存在差异，说明各自立场、研究边界及可能原因，而非简单混合。
 
 4. 语言与风格：
-   - Always respond in **English**, regardless of the user's input language. Reference lists must follow APA 7 in English;
+- Respond in the same language as the user's question unless the user explicitly requests another language. Reference lists may keep source titles in their original language;
    - 首次出现的重要术语，尽量给出中英对照（如用户使用中文提问）；
    - 先结论后证据，避免空泛、堆砌式罗列，突出“发现了什么、依据是什么、有什么启示”。
 
@@ -489,6 +492,74 @@ class RagAgent:
             print(f"⚠️ 对图片做 OCR 失败: {file_path}, error={e}")
             return ""
 
+    def _image_to_data_url(self, file_path: str) -> str:
+        mime = mimetypes.guess_type(file_path)[0] or "image/png"
+        with open(file_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("ascii")
+        return f"data:{mime};base64,{encoded}"
+
+    def _describe_image_with_gpt(self, file_path: str, source_hint: str = "") -> str:
+        """
+        Convert image-only learning material into searchable text using GPT vision.
+        The returned text is stored in the existing vector store; no image files are copied.
+        """
+        if not os.path.exists(file_path):
+            return ""
+
+        prompt = (
+            "Analyze this image as study or exam material. Extract all visible text, "
+            "describe diagrams, charts, maps, geometry figures, artwork, labels, symbols, "
+            "and layout. Identify likely knowledge points and write concise observations "
+            "that can be used to generate questions. If this is an exam page, preserve "
+            "each question as fully as possible. Respond in the dominant language of the image."
+        )
+        if source_hint:
+            prompt += f"\nSource: {source_hint}"
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": self._image_to_data_url(file_path)}},
+                        ],
+                    }
+                ],
+                temperature=0,
+                max_tokens=900,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"⚠️ GPT vision image analysis failed: {file_path}, error={e}")
+            return ""
+
+    def _describe_pdf_with_gpt_vision(self, file_path: str, max_pages: int = 4) -> str:
+        """Analyze the first pages of an image-heavy PDF with GPT vision."""
+        try:
+            pages = convert_from_path(file_path, dpi=150, first_page=1, last_page=max_pages)
+        except Exception as e:
+            print(f"⚠️ PDF to image failed for GPT vision: {file_path}, error={e}")
+            return ""
+
+        descriptions = []
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for i, page in enumerate(pages, start=1):
+                image_path = os.path.join(tmpdir, f"page_{i}.png")
+                try:
+                    page.save(image_path, "PNG")
+                    desc = self._describe_image_with_gpt(
+                        image_path,
+                        source_hint=f"{os.path.basename(file_path)} page {i}",
+                    )
+                    if desc:
+                        descriptions.append(f"[Page {i} visual analysis]\n{desc}")
+                except Exception as e:
+                    print(f"⚠️ GPT vision failed on PDF page {i}: {e}")
+        return "\n\n".join(descriptions)
+
     def _ocr_pdf_to_text(self, file_path: str) -> str:
         """
         对纯图片 PDF 做 OCR：
@@ -553,6 +624,9 @@ class RagAgent:
                 if not text or not text.strip():
                     print(f"⚠️ PDF {file_path} 没有可提取的文本，尝试 OCR 方式...")
                     text = self._ocr_pdf_to_text(file_path)
+                if not text or not text.strip():
+                    print(f"PDF text/OCR extraction returned empty; trying GPT vision: {file_path}")
+                    text = self._describe_pdf_with_gpt_vision(file_path)
 
             # 3) Word 文档
             elif ext == ".docx":
@@ -562,6 +636,9 @@ class RagAgent:
             elif ext in [".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"]:
                 print(f"ℹ️ 检测到图片试卷，将使用 OCR 识别: {file_path}")
                 text = self._ocr_image_to_text(file_path)
+                vision_text = self._describe_image_with_gpt(file_path, source_hint=os.path.basename(file_path))
+                if vision_text and vision_text not in text:
+                    text = (text + "\n\n[GPT vision description]\n" + vision_text).strip()
 
             # 5) 其他类型：先尝试按文本打开；有需要也可以扩展成 OCR
             else:
@@ -730,7 +807,7 @@ class RagAgent:
     - First give a 1–2 sentence overall definition or overview.
     - Then extract 3–5 key points, models, or findings, and for each one indicate the source (file name or author).
     - End with a short concluding paragraph summarizing the main trends or consensus.
-    - Always write your answer in **English**, even if the source materials or the question are in another language.
+    - Write your answer in the same language as the user's question unless the user explicitly asks for another language.
 
     【资料内容】
     {combined_context}
@@ -801,7 +878,15 @@ class RagAgent:
             "short": "short_answer",
             "short_answer": "short_answer",
         }
-        qt = type_map.get((question_type or "").lower(), "fill_blank")
+        raw_types = question_type if isinstance(question_type, list) else str(question_type or "").split(",")
+        selected_types = []
+        for raw_type in raw_types:
+            mapped = type_map.get(str(raw_type or "").strip().lower())
+            if mapped and mapped not in selected_types:
+                selected_types.append(mapped)
+        if not selected_types:
+            selected_types = ["fill_blank"]
+        qt = selected_types[0]
 
         # 2️⃣ 题目数量归一化
         try:
@@ -974,7 +1059,13 @@ class RagAgent:
                 "short-answer questions that can be reasonably answered in 2–5 sentences."
             ),
         }
-        type_desc = type_desc_map.get(qt, "fill-in-the-blank questions.")
+        if len(selected_types) > 1:
+            type_desc = (
+                "a balanced mix of these question types: "
+                + ", ".join(type_desc_map.get(item, item) for item in selected_types)
+            )
+        else:
+            type_desc = type_desc_map.get(qt, "fill-in-the-blank questions.")
 
         # 6️⃣ 针对不同模式，给模型的强约束提示
         if exam_only_mode:
@@ -996,10 +1087,11 @@ class RagAgent:
     You are an exam-preparation question generator for university students.
 
     [STRICT REQUIREMENTS]
-    - Always write ALL questions in **English**, even if the source materials or the user message are in other languages.
+    - Write questions in the same language as the user's instruction. If the user does not specify a language, use the dominant language of the source materials.
     - Base every question strictly on the context below. Do NOT introduce content that is not supported by the context.
     {mode_hint}
     - Question type: {type_desc}
+    - If multiple question types are requested, distribute the {n} questions across those types and label each item with its type, for example "Q1 [multiple_choice]".
     - Number of questions: {n}
     - Difficulty setting: {difficulty_key}
       {difficulty_hint}
@@ -1026,7 +1118,8 @@ class RagAgent:
                         "role": "system",
                         "content": (
                             "You generate high-quality final-exam practice questions "
-                            "in English based strictly on the given course materials or past exam questions. "
+                            "based strictly on the given course materials or past exam questions. "
+                            "Use the user's language unless a different language is explicitly requested. "
                             "Never include answers unless explicitly asked."
                         ),
                     },
@@ -1106,8 +1199,8 @@ class RagAgent:
             system_msg = (
                 "You are a strict but fair teaching assistant for a university course. "
                 "You grade exam questions and accept answers that are semantically "
-                "equivalent even if they use different wording."
-                "even if they use different wording. Always reply in English."
+                "equivalent even if they use different wording. "
+                "Reply in the same language as the question or student answer."
             )
 
             user_prompt = f"""
@@ -1133,11 +1226,11 @@ class RagAgent:
               - Then clearly tell the student where their answer is incorrect, incomplete, or off-topic.
               - Finally, tell the student how they should answer in 1–2 sentences, giving concrete guidance (what key terms/steps must appear), and connect this guidance to their original answer when possible.
 
-            Write your reply in **English** with the following structure:
+            Write your reply in the same language as the question or student answer with the following structure:
 
             Result: <Correct / Partially correct / Incorrect>
-            Brief explanation: <1–3 sentences in English, starting with an encouraging phrase and then explaining what is missing or wrong and how to improve.>
-            Reference answer: <a concise model answer in English>.
+            Brief explanation: <1-3 sentences, starting with an encouraging phrase and then explaining what is missing or wrong and how to improve.>
+            Reference answer: <a concise model answer>.
             """.strip()
 
             try:
@@ -1368,7 +1461,7 @@ class RagAgent:
         system_msg = (
             "You are a helpful teaching assistant for university courses. "
             "You explain exam questions and key concepts clearly using the provided course materials. "
-            "Always respond in English, even if the student's question or the materials are in another language. "
+            "Respond in the same language as the student's question unless they explicitly ask for another language. "
             "When the student asks about a specific exam question, focus on that question but still "
             "ground your explanation in the course materials."
         )
@@ -1466,7 +1559,8 @@ class RagAgent:
                 "You are an excellent university-level teaching assistant. "
                 "The student has just answered an exam question but still feels confused. "
                 "Provide a detailed yet clear explanation of the underlying concepts and "
-                "solution steps, grounded in the given course materials. Always respond in English."
+                "solution steps, grounded in the given course materials. "
+                "Respond in the same language as the question or student answer."
             )
 
             user_prompt = f"""
@@ -1482,7 +1576,7 @@ class RagAgent:
     [Course materials]
     {context or "(知识库检索失败时，可仅根据题干给出一般性讲解)"}
 
-    Please answer in **English** and use the following structure:
+    Please answer in the same language as the question/student answer and use the following structure:
 
 1. Core concepts examined in this question (2–4 sentences).
 2. Step-by-step solution explanation (bullet list; each step should explain WHY it is needed).
@@ -1623,6 +1717,28 @@ Papers:
                 self.db = None
                 return msg
 
+            image_exts = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+            for name in os.listdir(folder_path):
+                path = os.path.join(folder_path, name)
+                if os.path.isdir(path):
+                    continue
+                ext = os.path.splitext(name)[1].lower()
+                try:
+                    if ext in image_exts:
+                        ocr_text = self._ocr_image_to_text(path)
+                        vision_text = self._describe_image_with_gpt(path, source_hint=name)
+                        combined = "\n\n".join(
+                            part for part in [ocr_text, vision_text] if part and part.strip()
+                        )
+                        if combined:
+                            docs[name] = combined
+                    elif ext == ".pdf" and (not docs.get(name) or not docs.get(name, "").strip()):
+                        vision_text = self._describe_pdf_with_gpt_vision(path)
+                        if vision_text:
+                            docs[name] = vision_text
+                except Exception as e:
+                    print(f"⚠️ Multimodal material extraction failed: {name}, error={e}")
+
             if not docs:
                 msg = f"❌ 未找到任何可用文件（目录：{folder_path}）。"
                 print(msg)
@@ -1707,7 +1823,7 @@ Papers:
         2. Point out their strengths and common misunderstandings.
         3. Give 3 concrete and personalized study suggestions.
 
-        Always respond in English.
+        Respond in the same language as the student's recent questions when possible.
                 """.strip()
 
         try:
@@ -1764,7 +1880,7 @@ Papers:
                 "You are a teaching assistant for a university course. "
                 "You analyse the questions that a student got wrong in one practice round, "
                 "and identify their weak knowledge areas and give concrete study advice. "
-                "Always respond in English."
+                "Respond in the same language as the student's answers or feedback when possible."
             )
 
             user_prompt = f"""
@@ -1773,7 +1889,7 @@ Papers:
 
     {joined}
 
-Please give a concise but well-structured personalized learning feedback in English, including:
+Please give concise but well-structured personalized learning feedback in the same language as the student's answers or feedback, including:
 
 1. A list of 3–6 key knowledge points that the student needs to strengthen (use the course's technical terms).
 2. For each knowledge point, give 1–2 specific study suggestions (e.g., which lectures to review, which concepts to focus on, what kind of practice to do).
@@ -1829,7 +1945,7 @@ Do NOT repeat the full question stems; just refer to the concepts.
                 "You are a university learning analyst. "
                 "You review a student's full completed practice round, including correct, partial, "
                 "and incorrect answers, in order to infer strengths, weak knowledge areas, and recurring misconceptions. "
-                "Always respond in English."
+                "Respond in the same language as the student's answers or feedback when possible."
             )
 
             user_prompt = f"""
