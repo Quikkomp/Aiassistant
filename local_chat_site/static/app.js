@@ -735,13 +735,14 @@ function renderScoreChart() {
     const ctxEmpty = canvas.getContext("2d");
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
+    const cssHeight = Math.max(90, Math.round(rect.height) || 180);
     canvas.width = rect.width * dpr;
-    canvas.height = 180 * dpr;
+    canvas.height = cssHeight * dpr;
     ctxEmpty.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctxEmpty.clearRect(0, 0, rect.width, 180);
+    ctxEmpty.clearRect(0, 0, rect.width, cssHeight);
     ctxEmpty.fillStyle = "#9ca3af";
     ctxEmpty.font = "12px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctxEmpty.fillText(t("no_score"), 16, 180 / 2);
+    ctxEmpty.fillText(t("no_score"), 16, cssHeight / 2);
     return;
   }
 
@@ -752,7 +753,7 @@ function renderScoreChart() {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
   const cssWidth = rect.width || 600;
-  const cssHeight = 180;
+  const cssHeight = Math.max(90, Math.round(rect.height) || 180);
 
   canvas.width = cssWidth * dpr;
   canvas.height = cssHeight * dpr;
@@ -859,6 +860,12 @@ function appendQaBubble(role, text) {
   win.appendChild(div);
   win.scrollTop = win.scrollHeight;
 }
+
+let scoreChartResizeTimer = null;
+window.addEventListener("resize", () => {
+  window.clearTimeout(scoreChartResizeTimer);
+  scoreChartResizeTimer = window.setTimeout(renderScoreChart, 120);
+});
 
 function setQaSendLoading(btn, loading) {
   if (!btn) return;

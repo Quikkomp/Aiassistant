@@ -3987,3 +3987,432 @@ button#scenario-entry-btn.question-scenario-btn:disabled {
     justify-content: flex-start;
   }
 }
+
+/* ===========================
+   Desktop viewport-fit layout
+   Keep the app within one screen; data-heavy areas scroll internally.
+   =========================== */
+@media (min-width: 901px),
+       (min-width: 768px) and (min-height: 520px) and (orientation: landscape) {
+  html,
+  body:not(.auth-open):not(.profile-body) {
+    height: 100%;
+  }
+
+  body:not(.auth-open):not(.profile-body) {
+    overflow: hidden;
+  }
+
+  body:not(.auth-open):not(.profile-body) .page {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body:not(.auth-open):not(.profile-body) .topbar {
+    flex: 0 0 auto;
+    padding-block: clamp(8px, 1vh, 12px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .main {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-columns: minmax(250px, 1fr) minmax(0, 2.1fr);
+    grid-template-areas: "right left";
+    gap: clamp(10px, 1.2vw, 18px);
+    padding: clamp(8px, 1.25vh, 18px) clamp(12px, 2vw, 24px);
+    overflow: hidden;
+  }
+
+  body:not(.auth-open):not(.profile-body) .left-panel,
+  body:not(.auth-open):not(.profile-body) .right-panel {
+    height: 100%;
+    min-height: 0;
+  }
+
+  body:not(.auth-open):not(.profile-body) .left-panel {
+    padding: clamp(10px, 1.2vh, 16px);
+    overflow: hidden;
+  }
+
+  body:not(.auth-open):not(.profile-body) .panel-header {
+    flex: 0 0 auto;
+    margin-bottom: clamp(4px, 0.8vh, 10px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .panel-title {
+    font-size: clamp(27px, 3.4vh, 36px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .panel-subtitle {
+    font-size: clamp(13px, 1.45vh, 16px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .input-row {
+    flex: 0 0 auto;
+    margin-top: clamp(4px, 0.8vh, 12px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .chat-window,
+  body:not(.auth-open):not(.profile-body) .chat-window.question-layout-active {
+    flex: 1 1 auto;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto;
+  }
+
+  body:not(.auth-open):not(.profile-body) .chat-window.question-layout-active .question-card-wrapper,
+  body:not(.auth-open):not(.profile-body) .chat-window.question-layout-active .question-card-body {
+    min-height: 0;
+  }
+
+  body:not(.auth-open):not(.profile-body) .completion-overview {
+    min-height: 100%;
+  }
+
+  body:not(.auth-open):not(.profile-body) .exam-nav-wrapper {
+    flex: 0 0 auto;
+    margin-top: clamp(6px, 1vh, 12px) !important;
+    padding-top: clamp(4px, 0.7vh, 8px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .right-panel {
+    display: grid;
+    grid-template-rows: minmax(0, 2.25fr) minmax(0, 1.25fr) minmax(0, 1fr) auto;
+    gap: clamp(6px, 0.9vh, 12px);
+    padding: clamp(10px, 1.2vh, 16px);
+    overflow: hidden;
+  }
+
+  body:not(.auth-open):not(.profile-body) .right-panel > .bordered-box,
+  body:not(.auth-open):not(.profile-body) .right-panel > .exam-db-box,
+  body:not(.auth-open):not(.profile-body) .right-panel > .score-panel,
+  body:not(.auth-open):not(.profile-body) .right-panel > .tip-box {
+    min-height: 0;
+    margin-top: 0;
+  }
+
+  body:not(.auth-open):not(.profile-body) .bordered-box,
+  body:not(.auth-open):not(.profile-body) .exam-db-box {
+    display: flex;
+    flex-direction: column;
+    padding: clamp(8px, 1vh, 14px) !important;
+    overflow: hidden;
+  }
+
+  body:not(.auth-open):not(.profile-body) .right-panel .hint {
+    flex: 0 0 auto;
+    margin: clamp(3px, 0.45vh, 6px) 0 clamp(4px, 0.7vh, 9px);
+    font-size: clamp(11px, 1.25vh, 13px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .right-panel .upload-box {
+    flex: 0 0 auto;
+    gap: clamp(4px, 0.55vh, 8px) !important;
+    margin-bottom: clamp(3px, 0.55vh, 8px) !important;
+  }
+
+  body:not(.auth-open):not(.profile-body) .right-panel #upload-btn,
+  body:not(.auth-open):not(.profile-body) .right-panel #past-exam-upload-btn {
+    min-height: clamp(34px, 4.2vh, 40px);
+    padding-block: 6px !important;
+  }
+
+  body:not(.auth-open):not(.profile-body) .material-list-box {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-top: clamp(3px, 0.55vh, 7px);
+    padding: clamp(6px, 0.75vh, 10px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .material-list-title {
+    flex: 0 0 auto;
+    margin-bottom: clamp(3px, 0.55vh, 7px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .material-list,
+  body:not(.auth-open):not(.profile-body) .files-db-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  body:not(.auth-open):not(.profile-body) .material-list-actions {
+    flex: 0 0 auto;
+    margin-top: clamp(4px, 0.65vh, 8px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .material-list-actions .small-btn {
+    height: clamp(32px, 3.7vh, 36px);
+    min-height: 32px;
+  }
+
+  body:not(.auth-open):not(.profile-body) .score-panel {
+    display: flex;
+    flex-direction: column;
+    padding: clamp(7px, 0.85vh, 10px) clamp(8px, 0.8vw, 12px) !important;
+    overflow: hidden;
+  }
+
+  body:not(.auth-open):not(.profile-body) .score-panel-header {
+    flex: 0 0 auto;
+  }
+
+  body:not(.auth-open):not(.profile-body) #score-chart {
+    flex: 1 1 auto;
+    height: 100% !important;
+    min-height: 0;
+  }
+
+  body:not(.auth-open):not(.profile-body) .tip-box {
+    padding: clamp(6px, 0.8vh, 10px) !important;
+  }
+
+  body:not(.auth-open):not(.profile-body) .tip-title {
+    margin-bottom: clamp(2px, 0.4vh, 6px);
+  }
+
+  body:not(.auth-open):not(.profile-body) .app-footer-credit {
+    flex: 0 0 auto;
+    padding: 2px 24px 5px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+}
+
+@media (min-width: 981px),
+       (min-width: 768px) and (min-height: 520px) and (orientation: landscape) {
+  .auth-screen {
+    height: 100vh;
+    height: 100dvh;
+    align-items: center;
+    padding: 82px clamp(14px, 3vw, 48px) 30px;
+    overflow: hidden;
+  }
+
+  .auth-shell {
+    height: min(800px, calc(100dvh - 112px));
+    min-height: 0;
+    max-height: 800px;
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.95fr);
+    gap: clamp(14px, 2vw, 30px);
+  }
+
+  .auth-visual,
+  .auth-card {
+    min-height: 0;
+  }
+
+  .auth-card-inner {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .auth-benefits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 981px) and (max-height: 900px),
+       (min-width: 768px) and (max-width: 980px) and (min-height: 520px) and (max-height: 900px) and (orientation: landscape) {
+  .auth-screen {
+    padding-top: 74px;
+    padding-bottom: 24px;
+  }
+
+  .auth-shell {
+    height: calc(100dvh - 98px);
+  }
+
+  .auth-visual {
+    padding: 26px 30px;
+  }
+
+  .auth-copy h1,
+  html:lang(zh-CN) .auth-copy h1 {
+    margin: 18px 0 10px;
+    font-size: clamp(34px, 6vh, 50px);
+  }
+
+  .auth-benefits {
+    gap: 10px;
+  }
+
+  .auth-benefits div {
+    min-height: 88px;
+    padding: 13px 14px;
+  }
+
+  .auth-benefits strong {
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .auth-benefits span {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .auth-card {
+    padding: 10px;
+  }
+
+  .auth-card-inner {
+    padding: 22px 26px;
+  }
+
+  .auth-form h2,
+  html:lang(zh-CN) .auth-form h2 {
+    font-size: clamp(27px, 4.2vh, 34px);
+  }
+
+  .auth-form p {
+    margin-bottom: 16px;
+    font-size: 15px;
+  }
+
+  .auth-form label,
+  #login-form label {
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+
+  .auth-form input[type="text"],
+  .auth-form input[type="email"],
+  .auth-form input[type="password"] {
+    min-height: 46px;
+  }
+
+  .auth-row {
+    margin-bottom: 12px;
+  }
+
+  .auth-primary,
+  .auth-guest {
+    min-height: 48px;
+  }
+
+  .auth-guest {
+    margin-top: 16px;
+  }
+
+  .auth-switch {
+    margin-top: 14px;
+  }
+
+  .auth-footer-credit {
+    bottom: 5px;
+  }
+}
+
+@media (min-width: 981px) and (max-height: 650px),
+       (min-width: 768px) and (max-width: 980px) and (min-height: 520px) and (max-height: 650px) and (orientation: landscape) {
+  .auth-card-inner {
+    padding: 12px 18px;
+  }
+
+  .auth-form h2,
+  html:lang(zh-CN) .auth-form h2 {
+    margin-bottom: 5px;
+    font-size: clamp(24px, 4.5vh, 29px);
+  }
+
+  .auth-form p {
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .auth-form label,
+  #login-form label {
+    gap: 3px;
+    margin-bottom: 7px;
+  }
+
+  .auth-form input[type="text"],
+  .auth-form input[type="email"],
+  .auth-form input[type="password"] {
+    min-height: 40px;
+    padding-inline: 13px;
+    font-size: 14px;
+  }
+
+  .auth-row {
+    margin-bottom: 6px;
+  }
+
+  .auth-message {
+    min-height: 14px;
+    margin: -2px 0 3px;
+    font-size: 12px;
+  }
+
+  .auth-primary,
+  .auth-guest {
+    min-height: 42px;
+    font-size: 15px;
+  }
+
+  .auth-guest {
+    margin-top: 8px;
+  }
+
+  .auth-switch {
+    margin-top: 7px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 980px) and (min-height: 520px) and (orientation: landscape) {
+  body:not(.auth-open):not(.profile-body) .input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 5px;
+  }
+
+  body:not(.auth-open):not(.profile-body) .source-row,
+  body:not(.auth-open):not(.profile-body) .textarea-row {
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  body:not(.auth-open):not(.profile-body) .question-type-group {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 3px;
+    padding: 4px;
+  }
+
+  body:not(.auth-open):not(.profile-body) .question-type-option {
+    flex: 1 1 auto;
+    min-height: 34px;
+    padding-inline: 7px;
+    font-size: 12px;
+  }
+
+  body:not(.auth-open):not(.profile-body) .question-count-control {
+    min-height: 42px;
+    gap: 5px;
+    padding: 4px 6px 4px 8px;
+  }
+
+  body:not(.auth-open):not(.profile-body) #question-count {
+    width: 54px;
+    min-height: 34px;
+  }
+
+  body:not(.auth-open):not(.profile-body) .textarea-row #send-btn {
+    flex: 1 1 auto;
+  }
+}
