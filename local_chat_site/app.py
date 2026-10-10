@@ -5,7 +5,7 @@ import sys
 import uuid
 import hashlib
 from typing import List
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, send_file
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -19,6 +19,8 @@ import rag_agentV3_2 as rag_agent_module  # ✅ 修改为你的文件名
 import mysql.connector
 from mysql.connector import IntegrityError as MySQLIntegrityError
 from collections import Counter
+from question_bank import BankStore
+from exam_import import ExamImportError
 
 
 # ---------------- 基础配置 ----------------
@@ -209,6 +211,7 @@ def get_profile_user():
 
 
 app = Flask(__name__)
+bank_store = BankStore(os.path.join(BASE_DIR, "question_bank.sqlite3"))
 # 用于 Flask session（建议在服务器上用环境变量改成更安全的值）
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 init_db()
@@ -464,6 +467,7 @@ def call_local_model(
     difficulty: str = "medium",
     selected_docs: List[str] | None = None,
     selected_exam_ids: List[int] | None = None,
+    style_template_only: bool = False,
 ) -> str:
     """
     现在不再查文献，而是根据本地 materials 中上传的资料出期末复习题。
@@ -473,7 +477,8 @@ def call_local_model(
     print(
         f"📝 [Router] Generate exam questions: "
         f"type={question_type}, num={num_questions}, difficulty={difficulty}, "
-        f"selected_docs={selected_docs}, selected_exam_ids={selected_exam_ids}"
+        f"selected_docs={selected_docs}, selected_exam_ids={selected_exam_ids}, "
+        f"style_template_only={style_template_only}"
     )
     agent = get_rag_agent_for_current_user()
     return agent.generate_questions(
@@ -483,6 +488,7 @@ def call_local_model(
         difficulty=difficulty,
         selected_docs=selected_docs or [],
         selected_exam_ids=selected_exam_ids or None,
+        style_template_only=style_template_only,
     )
 
 
@@ -490,6 +496,161 @@ def call_local_model(
 
 
 # ---------------- 路由 ----------------
+def _infer_export_question_type(question: str) -> str:
+    text = question or ""
+    if re.search(r"(?m)^\s*[A-D][\).、]\s+", text):
+        return "multiple_choice"
+    if "____" in text or "blank" in text.lower() or "填空" in text:
+        return "fill_blank"
+    return "short_answer"
+
+
+def _format_export_question_type(question_type: str) -> str:
+    label_map = {
+        "fill_blank": "Fill-in-the-blank / 填空题",
+        "multiple_choice": "Multiple Choice / 选择题",
+        "short_answer": "Short Answer / 简答题",
+    }
+    return label_map.get(question_type or "", "Question / 题目")
+
+
+def _build_questions_pdf(questions, title="Generated Practice Paper"):
+    try:
+        from io import BytesIO
+        from html import escape
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except Exception as exc:
+        raise RuntimeError("PDF dependency is missing. Please install reportlab first.") from exc
+
+    buffer = BytesIO()
+    font_name = "Helvetica"
+    bold_font_name = "Helvetica-Bold"
+    font_candidates = [
+        r"C:\Windows\Fonts\msyh.ttc",
+        r"C:\Windows\Fonts\simhei.ttf",
+        r"C:\Windows\Fonts\simsun.ttc",
+        r"C:\Windows\Fonts\Deng.ttf",
+    ]
+    for font_path in font_candidates:
+        if os.path.exists(font_path):
+            try:
+                pdfmetrics.registerFont(TTFont("AiAssistantCJK", font_path))
+                font_name = "AiAssistantCJK"
+                bold_font_name = "AiAssistantCJK"
+                break
+            except Exception:
+                continue
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title=title,
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "PracticePaperTitle",
+        parent=styles["Title"],
+        fontName=bold_font_name,
+        fontSize=18,
+        leading=24,
+        alignment=TA_CENTER,
+        spaceAfter=12,
+    )
+    meta_style = ParagraphStyle(
+        "PracticePaperMeta",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#4b5563"),
+        spaceAfter=10,
+    )
+    question_style = ParagraphStyle(
+        "PracticePaperQuestion",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=10.5,
+        leading=16,
+        spaceAfter=8,
+    )
+    type_style = ParagraphStyle(
+        "PracticePaperType",
+        parent=styles["Normal"],
+        fontName=bold_font_name,
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor("#175cd3"),
+    )
+
+    clean_questions = []
+    for item in questions:
+        if isinstance(item, dict):
+            text = str(item.get("question") or item.get("text") or "").strip()
+            q_type = str(item.get("question_type") or "").strip()
+        else:
+            text = str(item or "").strip()
+            q_type = ""
+        if not text:
+            continue
+        if not q_type:
+            q_type = _infer_export_question_type(text)
+        clean_questions.append({"text": text, "question_type": q_type})
+
+    type_counts = Counter(item["question_type"] for item in clean_questions)
+    type_summary = " / ".join(
+        f"{_format_export_question_type(key)}: {value}"
+        for key, value in type_counts.items()
+    ) or "No questions"
+
+    story = [
+        Paragraph(escape(title), title_style),
+        Paragraph(
+            escape(f"Total: {len(clean_questions)} questions    |    Types: {type_summary}"),
+            meta_style,
+        ),
+        Spacer(1, 4),
+    ]
+
+    for idx, item in enumerate(clean_questions, start=1):
+        label = f"Q{idx}  [{_format_export_question_type(item['question_type'])}]"
+        text = escape(item["text"]).replace("\n", "<br/>")
+        table = Table(
+            [
+                [Paragraph(escape(label), type_style)],
+                [Paragraph(text, question_style)],
+            ],
+            colWidths=[doc.width],
+            hAlign="LEFT",
+        )
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef6ff")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d0d5dd")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 8))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+
 @app.route("/")
 def index():
     return render_template("index.html", auth=current_auth_payload())
@@ -940,7 +1101,7 @@ def delete_material():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    data = request.get_json(force=True)
+    data = request.get_json(force=True) or {}
     user_message = data.get("message", "").strip()
     history = data.get("history", [])
 
@@ -952,22 +1113,47 @@ def chat():
     # 保证一定是 list，而不是 None
     selected_docs = data.get("selected_docs", []) or []
     selected_exam_ids = data.get("selected_past_exam_ids", []) or []
+    style_template_only = bool(data.get("style_template_only", False))
+    save_to_bank = data.get("save_to_bank") is True
+    user_id = get_current_user_id()
+    reservation = None
+
+    if style_template_only and (not selected_docs or not selected_exam_ids):
+        return jsonify({
+            "ok": False,
+            "msg": "模板模式需要至少选择一份知识库资料和一份模拟试卷模板。",
+        }), 400
 
     # ⭐ 新增：如果没有勾选任何资料 + 没勾选任何过往试卷题目 → 后端直接拒绝出题
-    if not selected_docs and not selected_exam_ids:
+    if not selected_docs and not selected_exam_ids and not user_message:
         return jsonify({
             "ok": False,
             "msg": "当前没有勾选任何资料或过往试卷题目，请先勾选后再点击“生成试题”。",
         }), 400
 
-    reply = call_local_model(
-        user_message,
-        question_type=question_type,
-        num_questions=num_questions,
-        difficulty=difficulty,
-        selected_docs=selected_docs,
-        selected_exam_ids=selected_exam_ids,
-    )
+    saved_bank = None
+    try:
+        if save_to_bank:
+            reservation = bank_store.reserve(user_id,
+                str(data.get("bank_title") or user_message[:30] or "课程练习"), {
+                    "question_type": question_type, "difficulty": difficulty,
+                    "num_questions": num_questions, "selected_docs": selected_docs,
+                    "selected_past_exam_ids": selected_exam_ids,
+                    "style_template_only": style_template_only, "instruction": user_message,
+                })
+        reply = call_local_model(
+            user_message, question_type=question_type, num_questions=num_questions,
+            difficulty=difficulty, selected_docs=selected_docs,
+            selected_exam_ids=selected_exam_ids, style_template_only=style_template_only,
+        )
+        if not reply or reply.lstrip().startswith(("⚠", "❌")):
+            raise ValueError(reply or "没有生成有效题目，请重试。")
+        if reservation:
+            saved_bank = bank_store.finish(reservation, user_id, reply)
+    except Exception as exc:
+        if reservation:
+            bank_store.delete(reservation, user_id)
+        return jsonify({"ok": False, "msg": str(exc)}), 400
 
     # ⭐ 新增：把这次「生成试题」对话写入数据库
     try:
@@ -982,7 +1168,54 @@ def chat():
     except Exception as e:
         print("⚠️ save_chat_pair failed in /api/chat:", e)
 
-    return jsonify({"ok": True, "reply": reply})
+    return jsonify({"ok": True, "reply": reply, "bank": saved_bank})
+
+
+@app.route("/api/question_sets", methods=["GET"])
+def question_sets_list():
+    return jsonify({"ok": True, "banks": bank_store.list(get_current_user_id()), "limit": 10})
+
+
+@app.route("/api/question_sets/<bank_id>", methods=["DELETE"])
+def question_sets_delete(bank_id):
+    if not bank_store.delete(bank_id, get_current_user_id()):
+        return jsonify({"ok": False, "msg": "题组不存在。"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/question_sets/<bank_id>/progress", methods=["PUT"])
+def question_sets_progress(bank_id):
+    data = request.get_json(force=True) or {}
+    progress = data.get("progress")
+    version = data.get("version")
+    if not isinstance(progress, dict) or not isinstance(version, int):
+        return jsonify({"ok": False, "msg": "无效的作答状态。"}), 400
+    if len(str(progress)) > 300000:
+        return jsonify({"ok": False, "msg": "作答内容过长。"}), 400
+    if not bank_store.save_progress(bank_id, get_current_user_id(), progress, version):
+        return jsonify({"ok": False, "msg": "题组不存在或已在另一页面更新，请刷新后继续。"}), 409
+    return jsonify({"ok": True, "version": version + 1})
+
+
+@app.route("/api/export_questions_pdf", methods=["POST"])
+def export_questions_pdf():
+    data = request.get_json(force=True) or {}
+    questions = data.get("questions") or []
+    title = (data.get("title") or "Generated Practice Paper").strip()
+
+    if not isinstance(questions, list) or not questions:
+        return jsonify({"ok": False, "msg": "No questions were provided."}), 400
+
+    try:
+        pdf_buffer = _build_questions_pdf(questions, title=title)
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name="practice_paper.pdf",
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
 
 
 @app.route("/api/qa", methods=["POST"])
@@ -1208,9 +1441,15 @@ def past_exam_upload():
 
     saved_files = []
     imported_questions = []
+    file_results = []
 
     # ★ 当前用户自己的“过往试卷文件”目录
     user_exam_folder = get_user_past_exam_folder()
+    try:
+        agent = get_rag_agent_for_current_user()
+    except Exception as e:
+        print(f"⚠️ 试卷导入初始化失败: {type(e).__name__}")
+        return jsonify({"ok": False, "msg": "试卷导入服务初始化失败，请检查服务端配置和运行日志。"}), 503
 
     for f in files:
         if f.filename == "":
@@ -1218,27 +1457,34 @@ def past_exam_upload():
 
         filename = secure_filename(f.filename)
         save_path = os.path.join(user_exam_folder, filename)  # ★ 关键修改
-        f.save(save_path)
-        saved_files.append(filename)
-
-        # 调 RagAgent 解析题目（内部会写入“该用户自己的 JSON 题库”）
         try:
-            agent = get_rag_agent_for_current_user()
+            if not filename:
+                raise ExamImportError("upload", "文件名无效，请重命名后重新上传。")
+            f.save(save_path)
+            saved_files.append(filename)
             new_items = agent.import_past_exam_from_file(save_path)
+            if not new_items:
+                raise ExamImportError("questions", "已上传文件，但未识别到有效题目。请检查模型服务或题号格式。")
             imported_questions.extend(new_items)
+            file_results.append({"file": filename, "ok": True, "imported_count": len(new_items), **getattr(agent, "last_exam_import", {})})
+        except ExamImportError as e:
+            file_results.append({"file": filename, "ok": False, "stage": e.stage, "message": str(e)})
         except Exception as e:
-            print(f"⚠️ 从文件 {filename} 解析试卷题目失败: {e}")
+            print(f"⚠️ 试卷导入失败: {type(e).__name__}")
+            file_results.append({"file": filename, "ok": False, "stage": "upload" if filename not in saved_files else "internal",
+                                 "message": "文件保存失败，请检查上传目录权限。" if filename not in saved_files else "导入处理异常，请检查服务端运行日志。"})
 
     # 返回当前完整题库，方便前端覆盖本地缓存
-    agent = get_rag_agent_for_current_user()
     all_questions = agent.list_past_exam_questions()
-    if saved_files and not imported_questions:
+    warnings = [f"{item['file']}：{message}" for item in file_results for message in (item.get("warnings", []) if item["ok"] else [item["message"]])]
+    if not imported_questions:
         return jsonify({
             "ok": False,
             "saved_files": saved_files,
             "imported_count": 0,
             "questions": all_questions,
-            "msg": "文件已上传，但没有提取到题目。请确认文件清晰可读，或上传包含题干文字/图片的试卷；系统已尝试 OCR 与 GPT 图像识别。",
+            "file_results": file_results,
+            "msg": "；".join(warnings) or "未收到有效试卷文件，请重新选择文件上传。",
         }), 422
 
     return jsonify({
@@ -1246,6 +1492,8 @@ def past_exam_upload():
         "saved_files": saved_files,
         "imported_count": len(imported_questions),
         "questions": all_questions,
+        "file_results": file_results,
+        "warnings": warnings,
     })
 
 
@@ -1353,6 +1601,14 @@ def kb_status():
         "files": simple_files,
     })
 
+
+from exam_routes import make_exam_blueprint
+from exam_store import ExamStore
+
+app.register_blueprint(make_exam_blueprint(
+    ExamStore(os.path.join(BASE_DIR, "exams.sqlite3")),
+    bank_store, get_rag_agent_for_current_user,
+))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)

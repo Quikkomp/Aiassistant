@@ -6,6 +6,11 @@ __pycache__/
 
 local_chat_site/.env
 local_chat_site/app_users.sqlite3
+local_chat_site/question_bank.sqlite3*
+local_chat_site/exams.sqlite3*
+tmp/exam-test-deps/
+tmp/pdfs/
+output/ui-review/
 local_chat_site/materials/
 local_chat_site/vector_store/
 local_chat_site/student_logs/

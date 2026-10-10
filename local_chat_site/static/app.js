@@ -1,4 +1,4 @@
-﻿let chatHistory = []; // 鐢ㄦ潵璁板綍鍘嗗彶瀵硅瘽锛屼紶缁欏悗绔?
+let chatHistory = []; // 鐢ㄦ潵璁板綍鍘嗗彶瀵硅瘽锛屼紶缁欏悗绔?
 // ====== Exam Question Card State & Helpers ======
 let questionList = [];
 let questionAnswers = [];
@@ -35,6 +35,7 @@ const SCORE_HISTORY_KEY = "exam_score_history";
 let scoreHistory = [];
 let kbReady = true;
 const LANG_KEY = "ui_lang";
+const THEME_KEY = "ui_theme";
 let currentLang = "zh";
 
 const I18N = {
@@ -132,8 +133,8 @@ const I18N = {
     "difficulty_medium": "Medium",
     "difficulty_high": "High",
     "generate_questions": "Generate Questions",
-    "prev_question": "Last question",
-    "next_question": "Next question",
+    "prev_question": "← Last question",
+    "next_question": "Next question →",
     "survey": "Start Questionnaire",
     "feedback_default": "After completing all questions, I will tell you which areas need improvement.",
     "scenario_entry_desc": "You can click below to generate similar questions using the same concept.",
@@ -193,6 +194,11 @@ const I18N = {
     "upload_exam_ok": "Uploaded {saved} file(s), extracted {imported} question(s).",
     "upload_past_btn": "Upload Past Exam Papers",
     "generate_btn": "Generate Questions",
+    "export_pdf": "Generate PDF",
+    "export_pdf_loading": "Generating PDF...",
+    "export_pdf_no_questions": "Please generate questions first.",
+    "export_pdf_failed": "PDF generation failed: ",
+    "export_pdf_server_failed": "PDF generation failed. Please check backend service.",
     "completion_title": "All questions completed",
     "completion_subtitle": "Review any completed question below.",
     "completion_status": "Completed",
@@ -222,8 +228,8 @@ const ZH_OVERRIDES = {
   difficulty_medium: "中",
   difficulty_high: "高",
   generate_btn: "生成试题",
-  prev_question: "上一题",
-  next_question: "下一题",
+  prev_question: "← 上一题",
+  next_question: "下一题 →",
   survey: "开始问卷",
   feedback_default: "完成全部题目后，我会告诉你需要加强的知识点。",
   scenario_entry_desc: "你可以点击下方按钮，基于同一知识点生成相似题目。",
@@ -282,6 +288,11 @@ const ZH_OVERRIDES = {
   upload_parse_loading: "上传并解析中...",
   upload_exam_ok: "已上传 {saved} 个文件，成功提取 {imported} 道题。",
   upload_past_btn: "上传历年试卷文件",
+  export_pdf: "一键生成 PDF",
+  export_pdf_loading: "正在生成 PDF...",
+  export_pdf_no_questions: "请先生成题目。",
+  export_pdf_failed: "PDF 生成失败：",
+  export_pdf_server_failed: "PDF 生成失败，请检查后端服务是否启动。",
   completion_title: "已完成所有题目",
   completion_subtitle: "可在下方查看全部题号，并返回任意题目复习。",
   completion_status: "已完成",
@@ -498,6 +509,8 @@ function applyStaticI18n() {
   if (nextBtn) nextBtn.innerText = t("next_question");
   const surveyBtn = document.querySelector(".survey-btn");
   if (surveyBtn) surveyBtn.innerText = t("survey");
+  const exportPdfBtn = document.getElementById("export-pdf-btn");
+  if (exportPdfBtn && !exportPdfBtn.dataset.loading) exportPdfBtn.innerText = t("export_pdf");
   const examFeedback = document.getElementById("exam-feedback");
   if (examFeedback) examFeedback.innerText = t("feedback_default");
   const scenarioEntryBtn = document.getElementById("scenario-entry-btn");
@@ -578,8 +591,87 @@ function setLanguage(lang) {
   applyAuthI18n();
   applyStaticI18n();
   refreshMaterialEmptyHintLanguage();
+  updatePastExamTemplateUi();
   renderScoreChart();
   renderQuestionCard();
+  updateWorkspaceStatus();
+  setTheme(document.body.classList.contains("dark-theme") ? "dark" : "light");
+  window.bankUI?.translate();
+  window.examUI?.translate();
+}
+
+// ===== Workspace comfort controls (theme, mobile resources, live progress) =====
+function updateWorkspaceStatus() {
+  const readyStatus = document.getElementById("workspace-ready-status");
+  const readyDot = document.getElementById("workspace-ready-dot");
+  const progress = document.getElementById("practice-progress");
+  const typeSummary = document.getElementById("selected-type-summary");
+  const resourceBtn = document.getElementById("resource-toggle-btn");
+  const zh = currentLang === "zh";
+
+  const statusLabels = document.querySelectorAll(".workspace-status .status-label");
+  if (statusLabels[0]) statusLabels[0].textContent = zh ? "进度" : "Progress";
+  if (statusLabels[1]) statusLabels[1].textContent = zh ? "题型" : "Mode";
+
+  if (readyStatus) readyStatus.textContent = kbReady
+    ? (zh ? "学习空间已就绪" : "Workspace ready")
+    : (zh ? "资料库正在准备" : "Preparing materials");
+  if (readyDot) readyDot.classList.toggle("is-waiting", !kbReady);
+
+  if (progress) progress.textContent = questionList.length
+    ? (zh ? `第 ${currentQuestionIndex + 1} / ${questionList.length} 题` : `Question ${currentQuestionIndex + 1} of ${questionList.length}`)
+    : (zh ? "尚未生成题目" : "No questions yet");
+
+  if (typeSummary) {
+    const labels = {
+      fill_blank: zh ? "填空题" : "Fill-in-the-blank",
+      multiple_choice: zh ? "选择题" : "Multiple choice",
+      short_answer: zh ? "简答题" : "Short answer",
+    };
+    typeSummary.textContent = getSelectedQuestionTypes().map((type) => labels[type] || type).join(" · ");
+  }
+
+  if (resourceBtn) {
+    const label = resourceBtn.querySelector(".resource-toggle-text");
+    if (label) label.textContent = zh ? "资料库" : "Resources";
+    resourceBtn.title = zh ? "打开学习资料库" : "Open learning resources";
+  }
+}
+
+function setTheme(theme) {
+  const dark = theme === "dark";
+  document.body.classList.toggle("dark-theme", dark);
+  localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+  const button = document.getElementById("theme-toggle-btn");
+  if (button) {
+    button.textContent = dark ? "☀" : "☾";
+    button.title = dark
+      ? (currentLang === "zh" ? "切换为浅色模式" : "Use light theme")
+      : (currentLang === "zh" ? "切换为深色模式" : "Use dark theme");
+  }
+}
+
+function initWorkspaceComfortControls() {
+  setTheme(localStorage.getItem(THEME_KEY) || "light");
+  updateWorkspaceStatus();
+
+  const themeButton = document.getElementById("theme-toggle-btn");
+  if (themeButton) themeButton.addEventListener("click", () => {
+    setTheme(document.body.classList.contains("dark-theme") ? "light" : "dark");
+  });
+
+  const resourceButton = document.getElementById("resource-toggle-btn");
+  if (resourceButton) resourceButton.addEventListener("click", () => {
+    const open = document.body.classList.toggle("resources-open");
+    resourceButton.setAttribute("aria-expanded", String(open));
+    if (open) document.querySelector(".right-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  document.querySelectorAll('input[name="question-type"], input[name="question-difficulty"], #question-count').forEach((control) => {
+    control.addEventListener("change", updateWorkspaceStatus);
+    control.addEventListener("input", updateWorkspaceStatus);
+  });
+
 }
 
 // Parse backend text (Q1, Q2, ...) into separate questions
@@ -616,6 +708,8 @@ function isMultipleChoiceQuestion(rawText) {
 }
 
 function inferQuestionType(rawText) {
+  const tagged = String(rawText || "").match(/\[(fill_blank|multiple_choice|short_answer)\]/i);
+  if (tagged) return tagged[1].toLowerCase();
   if (isMultipleChoiceQuestion(rawText)) return "multiple_choice";
   if (/_{3,}|\[\s*blank\s*\]|\(\s*blank\s*\)/i.test(String(rawText || ""))) {
     return "fill_blank";
@@ -643,6 +737,82 @@ function renderFeedbackText(container, text) {
     div.textContent = line;
     container.appendChild(div);
   });
+}
+
+function buildExportQuestions() {
+  return (questionList || []).map((question) => ({
+    question,
+    question_type: inferQuestionType(question),
+  }));
+}
+
+function setExportPdfButtonState() {
+  const btn = document.getElementById("export-pdf-btn");
+  if (!btn) return;
+  const hasQuestions = Array.isArray(questionList) && questionList.length > 0;
+  btn.disabled = !hasQuestions;
+  if (!btn.dataset.loading) {
+    btn.innerText = t("export_pdf");
+  }
+}
+
+async function exportQuestionsPdf() {
+  const btn = document.getElementById("export-pdf-btn");
+  if (!questionList || questionList.length === 0) {
+    alert(t("export_pdf_no_questions"));
+    return;
+  }
+
+  const oldLabel = btn ? btn.innerText : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.loading = "1";
+    btn.innerText = t("export_pdf_loading");
+  }
+
+  try {
+    const res = await fetch("/api/export_questions_pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: currentLang === "zh" ? "练习试卷" : "Generated Practice Paper",
+        questions: buildExportQuestions(),
+      }),
+    });
+
+    if (!res.ok) {
+      let msg = "";
+      try {
+        const data = await res.json();
+        msg = data.msg || "";
+      } catch (_) {
+        msg = await res.text();
+      }
+      alert(t("export_pdf_failed") + (msg || "Unknown error"));
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const datePart = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `practice_paper_${datePart}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    alert(t("export_pdf_server_failed"));
+  } finally {
+    if (btn) {
+      delete btn.dataset.loading;
+      btn.disabled = false;
+      btn.innerText = oldLabel || t("export_pdf");
+      setExportPdfButtonState();
+    }
+  }
 }
 
 // ====== Score helpers ======
@@ -1013,6 +1183,7 @@ async function sendQaQuestion() {
 
 
 function renderQuestionCard() {
+  window.bankUI?.renderProgress();
   const container = document.getElementById("chat-window");
   if (!container) return;
 
@@ -1033,11 +1204,13 @@ function renderQuestionCard() {
       bottomPrevBtn.disabled = true;
       bottomNextBtn.disabled = true;
     }
+    setExportPdfButtonState();
 
     return;
   }
 
   if (showCompletionOverview && isRoundComplete()) {
+    setExportPdfButtonState();
     renderCompletionOverview(container);
     return;
   }
@@ -1153,11 +1326,24 @@ function renderQuestionCard() {
   // 猸?鎶娾€淕ot it / I don't understand / Detailed Explanation / Ask AI鈥?鏀惧湪鍚屼竴琛?
   const understandRow = document.createElement("div");
   understandRow.className = "understand-row";
-  understandRow.appendChild(understandBtn);
-  understandRow.appendChild(dontUnderstandBtn);
-  understandRow.appendChild(explainBtn);
-  understandRow.appendChild(askAiBtn);
-  understandRow.appendChild(scenarioBtn);
+  const makeActionGroup = (className, label, buttons) => {
+    const group = document.createElement("div");
+    group.className = `feedback-action-group ${className}`;
+    group.setAttribute("role", "group");
+    group.setAttribute("aria-label", label);
+    const heading = document.createElement("span");
+    heading.className = "feedback-action-label";
+    heading.textContent = label;
+    const controls = document.createElement("div");
+    controls.className = "feedback-action-buttons";
+    buttons.forEach(button => { button.type = "button"; controls.appendChild(button); });
+    group.append(heading, controls);
+    return group;
+  };
+  understandRow.append(
+    makeActionGroup("feedback-response-group", currentLang === "zh" ? "理解反馈" : "Your understanding", [understandBtn, dontUnderstandBtn]),
+    makeActionGroup("feedback-learning-group", currentLang === "zh" ? "学习工具" : "Learning tools", [explainBtn, askAiBtn, scenarioBtn])
+  );
 
 
   // 鍙湁鎵规敼杩囧悗鎵嶈兘鐐圭悊瑙ｇ浉鍏虫寜閽?
@@ -1242,7 +1428,17 @@ function renderQuestionCard() {
   // 鎸夋樉绀洪『搴忥細鎻愪氦绛旀 -> 鎵规敼缁撴灉 -> 鈥滄垜鐞嗚В浜?+ 鎴戞病鐞嗚В鈥濅竴琛?
   actions.appendChild(submitBtn);
   actions.appendChild(resultBox);
-  actions.appendChild(understandRow);
+  const feedbackTools = document.createElement("details");
+  feedbackTools.className = "feedback-tools";
+  const feedbackSummary = document.createElement("summary");
+  feedbackSummary.textContent = currentLang === "zh" ? "讲解、追问与巩固练习" : "Explanations, follow-up and extra practice";
+  feedbackTools.append(feedbackSummary, understandRow);
+  const feedbackHint = document.createElement("p");
+  feedbackHint.className = "feedback-action-hint";
+  feedbackHint.textContent = currentLang === "zh" ? "提交并批改后，即可反馈理解情况、查看讲解或追问 AI。" : "Submit your answer to unlock understanding feedback, explanations and AI follow-up.";
+  feedbackHint.hidden = canClickUnderstand;
+  feedbackTools.appendChild(feedbackHint);
+  actions.appendChild(feedbackTools);
 
   card.appendChild(actions);
   card.appendChild(explainBox);
@@ -1356,6 +1552,8 @@ function renderQuestionCard() {
       }
     };
   }
+  setExportPdfButtonState();
+  updateWorkspaceStatus();
 }
 
 function isRoundComplete() {
@@ -1473,9 +1671,6 @@ function renderCompletionOverview(container) {
 }
 
 function buildFullRoundItems() {
-  const typeInput = document.querySelector('input[name="question-type"]:checked');
-  const questionType = activeQuestionType || (typeInput ? typeInput.value : "short_answer");
-
   return questionList.map((question, idx) => {
     const evaluation = questionEvaluations[idx] || "";
     const studentAnswer = (questionAnswers[idx] || "").trim();
@@ -1500,7 +1695,7 @@ function buildFullRoundItems() {
       student_answer: studentAnswer,
       evaluation,
       verdict,
-      question_type: questionType,
+      question_type: inferQuestionType(question),
     };
   });
 }
@@ -1865,6 +2060,8 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
           askAiBtn.disabled = false;
           askAiBtn.title = "";
       }
+      const feedbackHint = document.querySelector(".feedback-action-hint");
+      if (feedbackHint) feedbackHint.hidden = true;
 
 
 
@@ -1901,6 +2098,8 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
   }
 
   updateScenarioEntry(idx);
+  window.bankUI?.renderProgress();
+  window.bankUI?.scheduleSave(true);
 }
 
 
@@ -2486,7 +2685,7 @@ function checkRoundAndRequestFeedback() {
       student_answer: ansText,
       evaluation: evalText,
       verdict: verdict,
-      question_type: questionType,
+      question_type: inferQuestionType(q),
     };
   });
 
@@ -2542,6 +2741,7 @@ function showExamFeedback(text) {
   if (feedbackBox) {
     feedbackBox.innerText = text;
   }
+  window.bankUI?.scheduleSave(true);
 }
 
 
@@ -2793,6 +2993,69 @@ async function loadPastExamDb() {
   }
 }
 
+function getPastExamTemplateSource(item) {
+  return String(item?.source_file || item?.paper || item?.meta?.source_file || item?.meta?.paper || "").trim();
+}
+
+function updatePastExamTemplateUi() {
+  const picker = document.getElementById("past-exam-template-source");
+  const toggle = document.getElementById("past-exam-style-toggle");
+  const status = document.getElementById("past-exam-style-status");
+  if (!picker || !status) return;
+
+  const selected = Array.from(document.querySelectorAll(".past-exam-checkbox:checked"));
+  const zh = currentLang === "zh";
+  applyPastExamTemplateI18n(zh);
+  const templateMode = Boolean(toggle?.checked);
+  const count = selected.length;
+  status.textContent = !templateMode
+    ? (zh ? "模板模式已关闭：模拟题库可作为普通题目来源。" : "Template mode is off: model questions can be used as a normal question source.")
+    : count
+      ? (zh ? `已选择 ${count} 道模板题。生成内容只会来自知识库。` : `${count} template question${count > 1 ? "s" : ""} selected. Generated content will only come from Knowledge Base.`)
+      : (zh ? "请选择一份模拟卷作为模板；生成内容只会来自知识库。" : "Select a model paper as a template. Generated content will only come from Knowledge Base.");
+}
+
+function applyPastExamTemplateI18n(zh) {
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set("past-exam-template-title", zh ? "试卷风格模板" : "Paper-style template");
+  set("past-exam-template-description", zh
+    ? "学习所选试卷的题目顺序、格式和措辞；题目内容仍只来自知识库。"
+    : "Learn the selected paper's format, question sequence and wording.");
+  set("past-exam-style-toggle-label", zh ? "模板模式" : "Template mode");
+}
+
+function renderPastExamTemplatePicker() {
+  const picker = document.getElementById("past-exam-template-source");
+  if (!picker) return;
+
+  const previousValue = picker.value;
+  const sources = [...new Set((pastExamQuestions || []).map(getPastExamTemplateSource).filter(Boolean))].sort();
+  const zh = currentLang === "zh";
+  picker.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = sources.length
+    ? (zh ? "选择一份模拟卷模板…" : "Choose one paper template…")
+    : (zh ? "请先上传模拟卷" : "Upload a model paper first");
+  picker.appendChild(placeholder);
+  sources.forEach((source) => {
+    const option = document.createElement("option");
+    option.value = source;
+    option.textContent = source;
+    picker.appendChild(option);
+  });
+  picker.disabled = sources.length === 0;
+  if (sources.includes(previousValue)) picker.value = previousValue;
+}
+
+function selectPastExamTemplate(source) {
+  document.querySelectorAll(".past-exam-checkbox").forEach((checkbox) => {
+    const item = pastExamQuestions.find((question) => String(question.id) === checkbox.value);
+    checkbox.checked = Boolean(source) && getPastExamTemplateSource(item) === source;
+  });
+  updatePastExamTemplateUi();
+}
+
 // Render pastExamQuestions into the right-side list (each question includes a checkbox)
 function renderPastExamList() {
   const container = document.getElementById("previous-files-list");
@@ -2804,12 +3067,15 @@ function renderPastExamList() {
   if (!pastExamQuestions || pastExamQuestions.length === 0) {
     container.innerHTML = "";
     if (countSpan) countSpan.innerText = "0";
+    renderPastExamTemplatePicker();
+    updatePastExamTemplateUi();
     return;
   }
 
   if (countSpan) {
     countSpan.innerText = String(pastExamQuestions.length);
   }
+  renderPastExamTemplatePicker();
 
   pastExamQuestions.forEach((item) => {
     const row = document.createElement("div");
@@ -2828,7 +3094,8 @@ function renderPastExamList() {
       // If no id, use full question text as fallback
       checkbox.value = item.question || "";
     }
-    checkbox.checked = true; // Default checked
+    checkbox.checked = false;
+    checkbox.addEventListener("change", updatePastExamTemplateUi);
 
     const textDiv = document.createElement("div");
     textDiv.className = "exam-db-text";
@@ -2863,6 +3130,7 @@ function renderPastExamList() {
     row.appendChild(metaLine);
     container.appendChild(row);
   });
+  updatePastExamTemplateUi();
 }
 
 
@@ -2974,6 +3242,8 @@ async function refreshKbStats() {
     const sendBtn = document.getElementById("send-btn");
     const ready = !!data.ready;  // 鍚庣宸茬粡鎶娿€屾湁鏂囦欢 + 鍚戦噺搴撻潪绌恒€嶄竴璧峰垽鏂ソ浜?
     kbReady = ready;
+    updateWorkspaceStatus();
+    window.bankUI?.updateGenerateAvailability();
 
     if (sendBtn) {
       sendBtn.disabled = !ready;
@@ -2987,120 +3257,55 @@ async function refreshKbStats() {
     }
   } catch (e) {
     console.error("Failed to get knowledge base stats:", e);
+  } finally {
+    window.bankUI?.restoreMaterialSelection();
+    window.bankUI?.updateGenerateAvailability();
   }
 }
 
 
 // Send message (Generate questions)
 async function sendMessage() {
-  if (!kbReady) {
-    const chatWindow = document.getElementById("chat-window");
-    const msg = (currentLang === "zh" ? "???????????????????????????" : "The knowledge base is rebuilding the vector database. Please wait a few seconds before clicking 'Generate Questions'.");
-    if (chatWindow) {
-      chatWindow.innerHTML = "<div class='error-hint'>" + msg + "</div>";
-    } else {
-      alert(msg);
-    }
-    return;
-  }
-
+  if (window.bankUI?.busy) return;
   const input = document.getElementById("user-input");
+  const message = input.value.trim();
   const btn = document.getElementById("send-btn");
-  const text = input.value.trim();
-
-  // Question type: support selecting one or multiple types.
-  const questionTypes = getSelectedQuestionTypes();
-  const questionType = questionTypes.join(",");
-  activeQuestionType = questionTypes.length === 1 ? questionTypes[0] : "mixed";
-
-  // Number of questions: read from number input
+  const selectedDocs = Array.from(document.querySelectorAll(".material-checkbox:checked")).map(cb => cb.value);
+  const selectedIds = Array.from(document.querySelectorAll(".past-exam-checkbox:checked")).map(cb => Number(cb.value)).filter(Number.isInteger);
+  const templateMode = Boolean(document.getElementById("past-exam-style-toggle")?.checked);
+  const fail = text => window.bankUI?.message(text, true);
+  if (!message && !selectedDocs.length) return fail(currentLang === "zh" ? "请输入出题要求，或导入并选择学习资料。" : "Enter a prompt or select study materials.");
+  if (selectedDocs.length && !kbReady) return fail(currentLang === "zh" ? "知识库正在准备，请稍后再试。" : "Please wait for the Knowledge Base to finish preparing.");
+  if (templateMode && (!selectedDocs.length || !selectedIds.length)) return fail(currentLang === "zh" ? "试卷模板需要选择知识库资料和模板题目。" : "Select both study materials and a paper template.");
   const countInput = document.getElementById("question-count");
-  let numQuestions = parseInt(countInput.value, 10);
-  if (isNaN(numQuestions) || numQuestions <= 0) {
-    numQuestions = 5;
-  }
-
-  const difficultyInput = document.querySelector('input[name="question-difficulty"]:checked');
-  const questionDifficulty = difficultyInput ? difficultyInput.value : "medium";
-
-  // Selected document list
-  const selectedDocs = Array.from(
-    document.querySelectorAll(".material-checkbox:checked")
-  ).map((cb) => cb.value);
-
-  // Do not generate chat bubble on the left, only keep card-style question display
-  input.value = "";
-
+  const count = Number(countInput.value);
+  if (!Number.isInteger(count) || count < 1 || count > 50) return fail(currentLang === "zh" ? "题目数量需为 1–50 的整数。" : "Choose between 1 and 50 questions.");
+  const types = getSelectedQuestionTypes();
+  window.bankUI?.setBusy(true);
   btn.disabled = true;
-  const oldLabel = btn.innerText;
-  btn.innerText = t("generate_loading");
-
+  btn.textContent = t("generate_loading");
+  window.bankUI?.message(currentLang === "zh" ? "正在生成并保存题组，请稍候…" : "Generating and saving your question set…");
   try {
-    // 馃啎 Collect selected question IDs from past exam question bank
-    const selectedPastExamIds = Array.from(
-      document.querySelectorAll(".past-exam-checkbox:checked")
-    )
-      .map((cb) => parseInt(cb.value, 10))
-      .filter((id) => !Number.isNaN(id));
-
-    if (selectedDocs.length === 0 && selectedPastExamIds.length === 0) {
-      const chatWindow = document.getElementById("chat-window");
-      const msg = t("checking_docs_before_generate");
-      if (chatWindow) {
-        chatWindow.innerHTML = "<div class='error-hint'>" + msg + "</div>";
-      } else {
-        alert(msg);
-      }
-      return;  // 鉀?End here, do not call backend
-    }
-
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const response = await fetch("/api/chat", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: text,
-        history: chatHistory,
-        question_type: questionType,
-        num_questions: numQuestions,
-        difficulty: questionDifficulty,
-        selected_docs: selectedDocs, // 猸?Send selected documents to backend
-        selected_past_exam_ids: selectedPastExamIds,
+        message, history: [], question_type: types.join(","), num_questions: count,
+        difficulty: document.querySelector('input[name="question-difficulty"]:checked')?.value || "medium",
+        selected_docs: selectedDocs, selected_past_exam_ids: templateMode ? selectedIds : [],
+        style_template_only: templateMode, save_to_bank: true,
+        bank_title: document.getElementById("bank-title-input").value.trim(),
       }),
     });
-
-    const data = await res.json();
-    if (data.ok) {
-      // Parse returned questions into individual cards and render
-      setQuestions(data.reply);
-
-      // Update local history: only record when user typed something
-      if (text) {
-        chatHistory.push({ role: "user", content: text });
-      }
-      chatHistory.push({ role: "assistant", content: data.reply });
-    } else {
-      const chatWindow = document.getElementById("chat-window");
-      const msg = t("error_prefix") +  + (data.msg || (currentLang === "zh" ? "????" : "Unknown error"));
-      if (chatWindow) {
-        chatWindow.innerHTML = "<div class='error-hint'>" + msg + "</div>";
-      } else {
-        alert(msg);
-      }
-    }
-  } catch (e) {
-    console.error(e);
-    const chatWindow = document.getElementById("chat-window");
-    const msg = t("request_failed");
-    if (chatWindow) {
-      chatWindow.innerHTML = "<div class='error-hint'>" + msg + "</div>";
-    } else {
-      alert(msg);
-    }
+    const data = await response.json();
+    if (!response.ok || !data.ok || !data.bank) throw new Error(data.msg || t("request_failed"));
+    await window.bankUI.created(data.bank);
+    input.value = "";
+    document.getElementById("bank-title-input").value = "";
+  } catch (error) {
+    fail(error.message || t("request_failed"));
   } finally {
-    btn.disabled = false;
-    btn.innerText = oldLabel || t("generate_btn");
+    window.bankUI?.setBusy(false);
+    window.bankUI?.updateGenerateAvailability();
   }
 }
 
@@ -3146,17 +3351,12 @@ async function uploadFiles() {
 
     const data = await res.json();
     if (data.ok) {
-      resultDiv.innerText =
-        "Uploaded files: " +
-        data.saved.join(", ") +
-        "\nCurrent knowledge base contains " +
-        data.total_files +
-        " document(s).";
+      resultDiv.innerText = t("upload_success", { names: data.saved.join(", "), n: data.total_files }).replace(/\\n/g, "\n");
       fileInput.value = "";
       // Refresh metadata and update document selection list
       refreshKbStats();
     } else {
-      resultDiv.innerText = t("upload_failed") +  + (data.msg || (currentLang === "zh" ? "????" : "Unknown error"));
+      resultDiv.innerText = t("upload_failed") + " " + (data.msg || (currentLang === "zh" ? "未知错误" : "Unknown error"));
     }
   } catch (e) {
     console.error(e);
@@ -3214,8 +3414,11 @@ async function uploadPastExamFiles() {
       const savedCount = (data.saved_files || []).length;
       const importedCount = data.imported_count ?? 0;
       resultDiv.innerText = t("upload_exam_ok", { saved: savedCount, imported: importedCount });
+      if (Array.isArray(data.warnings) && data.warnings.length) {
+        resultDiv.innerText += "\n" + data.warnings.join("\n");
+      }
     } else {
-      resultDiv.innerText = t("upload_failed") + (data.msg || (currentLang === "zh" ? "????" : "Unknown error"));
+      resultDiv.innerText = t("upload_failed") + " " + (data.msg || (currentLang === "zh" ? "未知错误" : "Unknown error"));
     }
   } catch (e) {
     console.error(e);
@@ -3259,6 +3462,8 @@ function showApp(username) {
   if (accountName) accountName.textContent = username || "";
   if (guestLoginBtn) guestLoginBtn.classList.toggle("hidden", !!username);
   updateAccountAvatar(username);
+  window.bankUI?.reset();
+  window.examUI?.resumeLink();
   refreshKbStats();
   loadPastExamDb();
 }
@@ -3270,6 +3475,7 @@ function showAuth() {
   const guestLoginBtn = document.getElementById("guest-login-btn");
 
   document.body.classList.add("auth-open");
+  window.examUI?.reset();
   if (authScreen) authScreen.classList.remove("hidden");
   if (page) page.classList.add("app-hidden");
   if (accountChip) accountChip.classList.add("hidden");
@@ -3432,6 +3638,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectAllBtn = document.getElementById("select-all-materials");
   const clearBtn = document.getElementById("clear-materials");
   const pastExamUploadBtn = document.getElementById("past-exam-upload-btn");
+  const pastExamTemplatePicker = document.getElementById("past-exam-template-source");
+  const pastExamStyleToggle = document.getElementById("past-exam-style-toggle");
+  const exportPdfBtn = document.getElementById("export-pdf-btn");
   const explainCloseBtn = document.getElementById("explain-close-btn");
   if (explainCloseBtn) {
     explainCloseBtn.addEventListener("click", closeExplainModal);
@@ -3447,6 +3656,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (pastExamUploadBtn) {
     pastExamUploadBtn.addEventListener("click", uploadPastExamFiles);
+  }
+  if (pastExamTemplatePicker) {
+    pastExamTemplatePicker.addEventListener("change", () => {
+      selectPastExamTemplate(pastExamTemplatePicker.value);
+    });
+  }
+  if (pastExamStyleToggle) {
+    pastExamStyleToggle.addEventListener("change", updatePastExamTemplateUi);
+  }
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener("click", exportQuestionsPdf);
   }
 
   if (selectAllBtn) {
@@ -3467,7 +3687,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (input) {
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         sendMessage();
       }
@@ -3486,6 +3706,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const accountName = document.getElementById("account-name");
   updateAccountAvatar(accountName ? accountName.textContent : "");
   setLanguage(localStorage.getItem(LANG_KEY) || "zh");
+  initWorkspaceComfortControls();
 });
 
 window.addEventListener("resize", () => {

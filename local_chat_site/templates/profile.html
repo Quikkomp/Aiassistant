@@ -1,77 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Profile - MetaThink AI</title>
+  <title>个人中心 - MetaThink AI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=bank-20261010-profile" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='profile.css') }}?v=profile-20261010" />
 </head>
 <body class="profile-body">
-  <header class="profile-topbar">
-    <a class="profile-brand" href="/">
-      <img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="MetaThink AI logo" />
-      MetaThink AI
-    </a>
-    <a class="profile-back-link" href="/">Back to Practice</a>
-  </header>
-
-  <main class="profile-page">
-    <section class="profile-hero">
-      <div id="profile-avatar" class="profile-avatar">U</div>
-      <h1 id="profile-username">User</h1>
-      <p id="profile-email">Loading profile...</p>
-    </section>
-
-    <section class="profile-grid">
-      <article class="profile-card profile-info-card">
-        <div class="profile-card-header">
-          <h2>Basic Information</h2>
-          <button id="change-password-toggle" class="profile-primary-btn" type="button">Change Password</button>
-        </div>
-        <div class="profile-info-list">
-          <div><span>Username</span><strong id="profile-info-username">--</strong></div>
-          <div><span>Email</span><strong id="profile-info-email">--</strong></div>
-          <div><span>User ID</span><strong id="profile-info-id">--</strong></div>
-          <div><span>Practice Rounds</span><strong id="profile-info-rounds">0</strong></div>
-        </div>
-
-        <form id="password-form" class="profile-password-form hidden">
-          <label>Current password
-            <input id="current-password" type="password" autocomplete="current-password" required />
-          </label>
-          <label>New password
-            <input id="new-password" type="password" autocomplete="new-password" required />
-          </label>
-          <label>Confirm new password
-            <input id="confirm-password" type="password" autocomplete="new-password" required />
-          </label>
-          <div id="password-message" class="profile-message"></div>
-          <button class="profile-primary-btn" type="submit">Update Password</button>
-        </form>
-      </article>
-
-      <article class="profile-card profile-history-card">
-        <div class="profile-card-header">
-          <h2>Question History</h2>
-          <span id="history-count" class="profile-muted">0 rounds</span>
-        </div>
-        <div id="round-list" class="round-list"></div>
-      </article>
-    </section>
-
-    <section id="round-detail" class="profile-card round-detail hidden">
-      <div class="profile-card-header">
-        <div>
-          <h2 id="round-detail-title">Round Detail</h2>
-          <p id="round-detail-meta" class="profile-muted"></p>
-        </div>
-        <button id="close-round-detail" class="profile-secondary-btn" type="button">Close</button>
-      </div>
-      <div id="round-analysis" class="round-analysis"></div>
-      <div id="round-answers" class="round-answers"></div>
-    </section>
-  </main>
-
-  <script src="{{ url_for('static', filename='profile.js') }}"></script>
+  <div class="page bank-app profile-app">
+    <aside class="bank-sidebar profile-sidebar">
+      <a class="bank-brand logo" href="/"><img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="" />MetaThink AI</a>
+      <div class="profile-sidebar-user"><div id="profile-avatar" class="profile-avatar">U</div><div><strong id="profile-username">--</strong><span id="profile-email">--</span></div></div>
+      <nav class="bank-navigation profile-navigation" aria-label="个人中心导航">
+        <button class="bank-nav active" type="button" data-profile-view="info" aria-current="page" aria-controls="profile-info-view"><span aria-hidden="true">♙</span><span data-profile-i18n="info">个人资料</span></button>
+        <button class="bank-nav" type="button" data-profile-view="history" aria-controls="profile-history-view"><span aria-hidden="true">▤</span><span data-profile-i18n="history">学习记录</span><small id="profile-nav-rounds">0</small></button>
+        <button class="bank-nav" type="button" data-profile-view="security" aria-controls="profile-security-view"><span aria-hidden="true">⚿</span><span data-profile-i18n="security">账号安全</span></button>
+      </nav>
+      <div class="bank-sidebar-bottom profile-sidebar-bottom"><a class="bank-nav" href="/"><span aria-hidden="true">←</span><span data-profile-i18n="back">返回题库</span></a><p>MetaThink &amp; STEAM Lab @ XJTLU</p></div>
+    </aside>
+    <div class="bank-workspace">
+      <header class="topbar"><span class="profile-breadcrumb" data-profile-i18n="center">个人中心</span><div class="topbar-right"><button id="profile-theme-btn" class="topbar-icon-btn" type="button" aria-label="切换主题">☾</button><button id="profile-lang-btn" class="small-btn lang-toggle-btn" type="button">EN</button><button id="profile-logout-btn" class="profile-secondary-btn" type="button" data-profile-i18n="logout">退出登录</button></div></header>
+      <main class="bank-main profile-main">
+        <div class="profile-page-heading"><h1 id="profile-section-title" tabindex="-1">个人资料</h1><p id="profile-section-subtitle">查看账号信息，回顾你的学习历程。</p></div>
+        <div id="profile-page-message" class="profile-page-message" role="status" aria-live="polite" hidden></div>
+        <section id="profile-info-view" class="profile-view" aria-labelledby="profile-section-title">
+          <article class="profile-card profile-info-card"><div class="profile-card-header"><h2 data-profile-i18n="basic">基本信息</h2><span class="profile-section-icon" aria-hidden="true">♙</span></div><div class="profile-info-list">
+            <div><span data-profile-i18n="username">用户名</span><strong id="profile-info-username">--</strong></div>
+            <div><span data-profile-i18n="email">电子邮箱</span><strong id="profile-info-email">--</strong></div>
+            <div><span data-profile-i18n="userId">用户 ID</span><strong id="profile-info-id">--</strong></div>
+            <div><span data-profile-i18n="rounds">完成练习轮次</span><strong id="profile-info-rounds">--</strong></div>
+          </div><div class="profile-info-actions"><button id="change-password-toggle" class="profile-secondary-btn" type="button" data-profile-i18n="changePassword">修改密码</button></div></article>
+          <button class="profile-history-shortcut" type="button" data-profile-view="history"><span class="profile-shortcut-icon" aria-hidden="true">▤</span><span><strong data-profile-i18n="review">回顾学习记录</strong><small data-profile-i18n="reviewHint">查看历次作答、批改结果与学习反馈。</small></span><span aria-hidden="true">→</span></button>
+        </section>
+        <section id="profile-history-view" class="profile-view" aria-labelledby="profile-section-title" hidden>
+          <article id="profile-history-list-card" class="profile-card profile-history-card"><div class="profile-card-header"><h2 data-profile-i18n="completed">已完成的练习</h2><span id="history-count" class="profile-muted">--</span></div><div id="round-list" class="round-list"></div><button id="retry-history-btn" class="profile-secondary-btn" type="button" data-profile-i18n="retry" hidden>重新加载</button></article>
+          <section id="round-detail" class="profile-card round-detail" hidden><div class="profile-card-header"><div><h2 id="round-detail-title">练习详情</h2><p id="round-detail-meta" class="profile-muted"></p></div><button id="close-round-detail" class="profile-secondary-btn" type="button" data-profile-i18n="backHistory">返回记录</button></div><div id="round-analysis" class="round-analysis"></div><div id="round-answers" class="round-answers"></div></section>
+        </section>
+        <section id="profile-security-view" class="profile-view" aria-labelledby="profile-section-title" hidden>
+          <article class="profile-card profile-security-card"><div class="profile-card-header"><h2 data-profile-i18n="changePassword">修改密码</h2><span class="profile-section-icon" aria-hidden="true">⚿</span></div><p class="profile-security-note" data-profile-i18n="passwordHint">新密码至少 6 个字符，建议使用不重复的字母、数字与符号组合。</p>
+            <form id="password-form" class="profile-password-form">
+              <label><span data-profile-i18n="currentPassword">当前密码</span><input id="current-password" type="password" autocomplete="current-password" required /></label>
+              <label><span data-profile-i18n="newPassword">新密码</span><input id="new-password" type="password" autocomplete="new-password" minlength="6" required /></label>
+              <label><span data-profile-i18n="confirmPassword">确认新密码</span><input id="confirm-password" type="password" autocomplete="new-password" minlength="6" required /></label>
+              <div id="password-message" class="profile-message" role="status" aria-live="polite"></div>
+              <div class="profile-password-actions"><button class="profile-primary-btn" type="submit" data-profile-i18n="savePassword">更新密码</button><button id="clear-password-btn" class="profile-secondary-btn" type="button" data-profile-i18n="clear">清空</button></div>
+            </form>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='profile.js') }}?v=profile-20261010"></script>
 </body>
 </html>

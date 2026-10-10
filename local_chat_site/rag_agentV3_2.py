@@ -6,6 +6,7 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 from document_loader import load_documents, read_txt, read_pdf, read_docx
+from exam_import import ExamImportError, parse_model_questions, split_numbered_questions, question_type
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
@@ -308,11 +309,18 @@ class RagAgent:
         if folder:
             os.makedirs(folder, exist_ok=True)
 
+        temp_path = None
         try:
-            with open(path, "w", encoding="utf-8") as f:
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=folder or ".", suffix=".tmp", delete=False) as f:
+                temp_path = f.name
                 json.dump({"questions": questions}, f, ensure_ascii=False, indent=2)
+            os.replace(temp_path, path)
         except Exception as e:
-            print(f"⚠️ [save_exam_db] 保存过往试卷数据库失败: {e}")
+            print(f"⚠️ [save_exam_db] 保存失败: {type(e).__name__}")
+            raise ExamImportError("storage", "题目已解析，但保存题库失败，请检查目录写入权限后重试。") from e
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
 
     def add_past_exam_question(self, question_text, question_type="short_answer", meta=None):
         """
@@ -384,12 +392,9 @@ class RagAgent:
             返回新增题目的列表（每个元素是 add_past_exam_question 返回的 dict）。
             """
             if not raw_text or not raw_text.strip():
-                return []
+                raise ExamImportError("text", "文件未读取到有效文字，请检查文件是否损坏或需要文字识别。")
 
-            # 避免 prompt 过长，做个截断（可以按需调节）
             snippet = raw_text.strip()
-            if len(snippet) > 8000:
-                snippet = snippet[:8000] + "\n...[truncated]"
 
             prompt = f"""
     You will receive the plain text of a university exam paper (source file: {source_name}).
@@ -415,7 +420,11 @@ class RagAgent:
     \"\"\"{snippet}\"\"\"
     """
 
+            data = []
+            model_issue = ""
             try:
+                if len(snippet) > 24000:
+                    raise ValueError("paper_too_long_for_single_model_request")
                 response = self.client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
@@ -426,16 +435,23 @@ class RagAgent:
                         {"role": "user", "content": prompt},
                     ],
                     temperature=0,
+                    timeout=60,
+                    max_tokens=6000,
                 )
                 content = response.choices[0].message.content
-                data = json.loads(content)
+                if getattr(response.choices[0], "finish_reason", None) != "length":
+                    data = parse_model_questions(content)
+                if not data:
+                    model_issue = "模型返回为空或格式不完整"
             except Exception as e:
-                print(f"⚠️ 解析试卷文本失败: {e}")
-                return []
+                model_issue = "模型请求失败或试卷超过单次解析长度"
+                print(f"⚠️ 试卷模型解析未完成: {type(e).__name__}")
 
-            if not isinstance(data, list):
-                print("⚠️ 模型返回的不是列表，忽略。")
-                return []
+            used_fallback = not data
+            if used_fallback:
+                data = split_numbered_questions(raw_text, default_question_type)
+            if not data:
+                raise ExamImportError("questions", "已读取到文字，但无法识别题目。模型解析未完成，按题号提取也未找到有效题目；请检查模型服务或试卷题号格式。")
 
             added = []
             for idx, item in enumerate(data, start=1):
@@ -445,7 +461,9 @@ class RagAgent:
                 if not q_text:
                     continue
 
-                q_type = (item.get("question_type") or default_question_type).strip() or default_question_type
+                q_type = item.get("question_type")
+                if q_type not in {"fill_blank", "multiple_choice", "short_answer"}:
+                    q_type = question_type(q_text, default_question_type)
                 meta = item.get("meta") or {}
                 if not isinstance(meta, dict):
                     meta = {}
@@ -455,14 +473,21 @@ class RagAgent:
                     meta["source_file"] = source_name
                 if "index" not in meta:
                     meta["index"] = f"Q{idx}"
+                meta["extraction_method"] = "numbered_text" if used_fallback else "model"
 
-                record = self.add_past_exam_question(
-                    question_text=q_text,
-                    question_type=q_type,
-                    meta=meta,
-                )
+                record = {**meta, "question": q_text, "question_type": q_type}
                 added.append(record)
 
+            # Save an entire import once, so a failed write cannot leave half a paper.
+            lock_key = "exam:" + str(getattr(self, "exam_db_path", self.EXAM_DB_PATH))
+            with get_user_build_lock(lock_key):
+                existing = self._load_exam_db()
+                next_id = max((item.get("id", 0) for item in existing), default=0) + 1
+                for offset, record in enumerate(added):
+                    record["id"] = next_id + offset
+                self._save_exam_db(existing + added)
+            self.last_exam_import = {"text_chars": len(raw_text), "method": "numbered_text" if used_fallback else "model",
+                                     "warnings": ([model_issue + "，已按题号提取。请核对图表及跨页题干，必要时补充图片信息。"] if used_fallback else [])}
             return added
 
             # =======================
@@ -608,7 +633,10 @@ class RagAgent:
         返回新增题目的列表（每个元素是 add_past_exam_question 返回的 dict）。
         """
         if not os.path.exists(file_path):
-            raise FileNotFoundError(file_path)
+            raise ExamImportError("read", "上传文件不存在，请重新上传。")
+
+        self.last_exam_import = {"attempts": []}
+        attempts = self.last_exam_import["attempts"]
 
         ext = os.path.splitext(file_path)[1].lower()
         text = ""
@@ -620,11 +648,18 @@ class RagAgent:
 
             # 2) PDF：先尝试正常提取文本，提不到时再 OCR
             elif ext == ".pdf":
-                text = read_pdf(file_path)
+                attempts.append("pdf_text")
+                try:
+                    text = read_pdf(file_path)
+                except Exception as e:
+                    print(f"⚠️ PDF 文字读取失败: {type(e).__name__}")
+                    text = ""
                 if not text or not text.strip():
+                    attempts.append("ocr")
                     print(f"⚠️ PDF {file_path} 没有可提取的文本，尝试 OCR 方式...")
                     text = self._ocr_pdf_to_text(file_path)
                 if not text or not text.strip():
+                    attempts.append("vision")
                     print(f"PDF text/OCR extraction returned empty; trying GPT vision: {file_path}")
                     text = self._describe_pdf_with_gpt_vision(file_path)
 
@@ -634,6 +669,7 @@ class RagAgent:
 
             # 4) 常见图片格式：直接 OCR
             elif ext in [".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"]:
+                attempts.extend(["ocr", "vision"])
                 print(f"ℹ️ 检测到图片试卷，将使用 OCR 识别: {file_path}")
                 text = self._ocr_image_to_text(file_path)
                 vision_text = self._describe_image_with_gpt(file_path, source_hint=os.path.basename(file_path))
@@ -649,19 +685,21 @@ class RagAgent:
                     text = ""
 
         except Exception as e:
-            print(f"⚠️ 无法从文件中读取内容: {file_path}, error={e}")
-            text = ""
+            print(f"⚠️ 文件读取失败: {type(e).__name__}")
+            raise ExamImportError("read", "文件内容读取失败，请检查文件格式是否有效、文件是否损坏。") from e
 
         if not text or not text.strip():
             print(f"⚠️ 文件内容为空或无法解析为文本，跳过：{file_path}")
-            return []
+            raise ExamImportError("text", "未读取到有效文字。请检查文字识别依赖和模型服务是否可用，或上传可复制文字的 PDF / Word / 文本文件。")
 
         source_name = os.path.basename(file_path)
-        return self._extract_questions_from_text(
+        result = self._extract_questions_from_text(
             raw_text=text,
             default_question_type=default_question_type,
             source_name=source_name,
         )
+        self.last_exam_import["attempts"] = attempts
+        return result
 
 
 
@@ -724,7 +762,7 @@ class RagAgent:
 
     - "learn"：当用户的意图是让系统“学习/导入/加入/更新”资料，而不是立刻回答具体学术问题时，例如：
         * 用户说 “帮我把这些文章加入你的知识库”；
-        * 用户强调 “先学习这些材料/文献，以后回答我的问题”；  
+        * 用户强调 “先学习这些材料/文献，以后回答我的问题”；
       这类以“扩充知识库”为主的请求，选择 learn。
 
     注意：
@@ -840,10 +878,12 @@ class RagAgent:
             difficulty: str = "medium",
             selected_docs=None,
             selected_exam_ids=None,
+            style_template_only: bool = False,
     ) -> str:
         """
-        Generate final-exam practice questions in **English** based on uploaded materials
-        AND/OR past exam questions.
+        Generate final-exam practice questions from uploaded course materials. When
+        ``style_template_only`` is enabled, selected past-exam questions define the
+        paper's format only; they must never contribute factual question content.
 
         ✅ 新增规则：
         - 如果左侧 Knowledge Base 没有勾选任何文献，右侧“过往试卷题库”勾选了题目，
@@ -854,9 +894,16 @@ class RagAgent:
         if selected_docs is None:
             selected_docs = []
         exam_id_list = selected_exam_ids or []
+        style_template_only = bool(style_template_only)
+
+        if style_template_only and (not selected_docs or not exam_id_list):
+            return (
+                "⚠️ Template mode requires both selected Knowledge Base materials "
+                "and selected model-paper questions."
+            )
 
         # 双保险：两边都没选就直接拒绝
-        if (not selected_docs) and (not exam_id_list):
+        if (not selected_docs) and (not exam_id_list) and not (query or "").strip():
             return (
                 "⚠️ 当前没有勾选任何资料或过往试卷题目，"
                 "请在界面右侧勾选后再点击“生成试题”。"
@@ -864,7 +911,7 @@ class RagAgent:
 
         # 是否进入「只用过往试卷题目」模式：
         # 👉 Knowledge Base 完全没勾选，但过往试卷题库勾选了题目
-        exam_only_mode = (not selected_docs) and bool(exam_id_list)
+        exam_only_mode = (not selected_docs) and bool(exam_id_list) and not style_template_only
 
         # 1️⃣ 统一题型
         type_map = {
@@ -916,7 +963,7 @@ class RagAgent:
         results = []
 
         # 3️⃣ 如果不是“只用过往试卷题目”模式，就正常从知识库检索
-        if not exam_only_mode:
+        if selected_docs:
             # ⭐ 先判断向量库是不是空的
             if self.db is None:
                 return ("⚠️ The local knowledge base is currently empty.\n"
@@ -971,7 +1018,7 @@ class RagAgent:
                 combined_context = combined_context[:6000] + "\n...[truncated context]"
 
         # 4.1️⃣ 读取 & 过滤“过往试卷题库”
-        past_exam_items = self._load_exam_db()
+        past_exam_items = self._load_exam_db() if exam_id_list else []
 
         if exam_id_list:
             try:
@@ -992,6 +1039,11 @@ class RagAgent:
                 # 如果过滤后不是空，就用过滤后的题目
                 if filtered_items:
                     past_exam_items = filtered_items
+                elif style_template_only:
+                    return (
+                        "⚠️ The selected paper-template questions could not be found. "
+                        "Please reselect or re-upload the model paper."
+                    )
 
         # 4.2️⃣ 若处于「只用过往试卷题目」模式，用这些题目本身构建“知识上下文”
         if exam_only_mode:
@@ -1026,6 +1078,7 @@ class RagAgent:
 
         # 4.3️⃣ 构造“风格示例”（不论是否 exam_only_mode 都可以给模型看）
         exam_examples = ""
+        template_blueprint = ""
         if past_exam_items:
             samples = past_exam_items[-10:]  # 只取最近 10 条避免太长
             lines_exam = []
@@ -1044,6 +1097,20 @@ class RagAgent:
                     exam_examples = (
                         exam_examples[:2000] + "\n...[truncated exam examples]"
                     )
+
+        if style_template_only:
+            template_types = [
+                str(item.get("question_type") or "short_answer").strip()
+                for item in past_exam_items
+                if str(item.get("question") or "").strip()
+            ]
+            sequence = " → ".join(template_types[:20]) or "short_answer"
+            template_blueprint = (
+                f"The selected paper contains {len(template_types)} extracted questions. "
+                f"Its question-type sequence is: {sequence}. "
+                "For this generated paper, preserve that relative type order by taking "
+                "or cycling the sequence as needed to reach the requested question count."
+            )
 
         # 5️⃣ 题型说明（英文）
         type_desc_map = {
@@ -1075,11 +1142,24 @@ class RagAgent:
                 "as these past exam questions.\n"
                 "      - Do NOT switch to unrelated chapters or topics that are not obviously connected to these questions."
             )
-        else:
+        elif style_template_only:
+            mode_hint = (
+                "- The 'Source materials' below are the ONLY source of factual content, concepts, examples, and answerable knowledge.\n"
+                "      - The 'Past exam question examples' are a PAPER-STYLE TEMPLATE ONLY.\n"
+                "      - Do NOT test, reuse, paraphrase, or infer any topic, case, name, number, or answer from the template questions.\n"
+                "      - Copy only the paper's structural features: section rhythm, question-type sequence, numbering, wording pattern, cognitive demand, and option/answer format."
+            )
+        elif selected_docs:
             mode_hint = (
                 "- The 'Source materials' below are knowledge snippets retrieved from the selected course materials.\n"
                 "      - When 'Past exam question examples' are provided, use them ONLY as style/difficulty references; "
                 "all factual content must still be grounded in 'Source materials'."
+            )
+        else:
+            combined_context = query
+            mode_hint = (
+                "- No Knowledge Base file is selected. Use any supplied study text as the factual source.\n"
+                "      - If the instruction supplies only a topic, generate general practice for that topic using established knowledge."
             )
 
         # 7️⃣ Prompt
@@ -1090,15 +1170,19 @@ class RagAgent:
     - Write questions in the same language as the user's instruction. If the user does not specify a language, use the dominant language of the source materials.
     - Base every question strictly on the context below. Do NOT introduce content that is not supported by the context.
     {mode_hint}
-    - Question type: {type_desc}
-    - If multiple question types are requested, distribute the {n} questions across those types and label each item with its type, for example "Q1 [multiple_choice]".
-    - Number of questions: {n}
-    - Difficulty setting: {difficulty_key}
+    - Default question type: {type_desc}
+    - Default number of questions: {n} (valid range 1–50).
+    - Default difficulty setting: {difficulty_key}
       {difficulty_hint}
+    - The user's explicit requested type, count (clamped to 1–50), difficulty and scope override these defaults. Use defaults only for unspecified fields.
+    - Label EVERY question with its actual type, e.g. Q1 [multiple_choice], Q2 [fill_blank], Q3 [short_answer].
     - Do NOT provide answers or solutions, only the questions themselves.
     - Use clear numbering: Q1, Q2, Q3, ...
     - When possible, generate questions that are similar in style and difficulty
       to the past exam questions provided, but do NOT copy them verbatim.
+    - If past exam examples are provided, imitate their question format, wording pattern,
+      cognitive demand, and answer style while changing the concrete content.
+    {"- Template blueprint: " + template_blueprint if template_blueprint else ""}
 
     [User's instruction / exam scope]
     {query}

@@ -1,0 +1,94 @@
+/* Personal workspace shares the library shell; existing account APIs are unchanged. */
+body.profile-body { background:#fff; }
+.profile-app { font-family:"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif; }
+.profile-sidebar-user { display:flex; align-items:center; gap:11px; padding:14px 20px 22px; border-bottom:1px solid #e8edf3; margin:0 16px; }
+.profile-sidebar-user .profile-avatar { display:grid; place-items:center; flex:0 0 42px; width:42px; height:42px; border-radius:12px; background:#e8efff; color:#416df5; box-shadow:none; font-size:18px; }
+.profile-sidebar-user > div:last-child { min-width:0; }
+.profile-sidebar-user strong { display:block; font-size:14px; color:#33445e; overflow-wrap:anywhere; }
+.profile-sidebar-user #profile-email { display:block; margin-top:5px; font-size:11px; color:#61718a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px; }
+.profile-app .profile-sidebar-bottom .bank-nav { margin-bottom:16px; padding:10px; color:#526784; font-size:13px; }
+.profile-app .profile-breadcrumb { color:#61718a; font-size:13px; }
+.profile-app .profile-main { padding-top:16px; }
+.profile-page-heading { margin-bottom:30px; }
+.profile-page-heading h1 { margin:0 0 10px; font-size:25px; color:#273345; outline:none; }
+.profile-page-heading p { margin:0; font-size:13px; color:#596b85; line-height:1.7; }
+.profile-view { max-width:1000px; }
+.profile-app .profile-card { border:1px solid #e4eaf2; border-radius:13px; background:#fff; padding:24px; box-shadow:none; margin:0; }
+.profile-app .profile-card-header { margin-bottom:20px; gap:16px; align-items:flex-start; }
+.profile-app .profile-card-header h2 { margin:0; font-size:16px; font-weight:650; color:#34445c; }
+.profile-section-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:8px; background:#edf3ff; color:#416df5; font-size:22px; }
+.profile-app .profile-info-list { gap:0; }
+.profile-app .profile-info-list > div { display:grid; grid-template-columns:150px minmax(0,1fr); align-items:center; gap:16px; padding:17px 0; border:0; border-bottom:1px solid #eef1f6; border-radius:0; background:transparent; }
+.profile-app .profile-info-list > div:last-child { border:0; }
+.profile-app .profile-info-list span { color:#61718a; font-size:13px; }
+.profile-app .profile-info-list strong { color:#33445e; font-size:14px; font-weight:550; overflow-wrap:anywhere; text-align:left; }
+.profile-info-actions { margin-top:22px; padding-top:18px; border-top:1px solid #eef1f6; }
+.profile-app .profile-primary-btn,.profile-app .profile-secondary-btn { min-height:40px; padding:9px 15px; border-radius:8px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; box-shadow:none; transition:background 150ms ease,border-color 150ms ease,transform 150ms ease; }
+.profile-app .profile-primary-btn { border:1px solid #416df5; background:#416df5; color:#fff; }
+.profile-app .profile-secondary-btn { border:1px solid #dbe5f5; background:#f4f7fd; color:#425e95; }
+.profile-app .profile-primary-btn:hover:not(:disabled) { background:#315bdc; transform:translateY(-1px); }
+.profile-app .profile-secondary-btn:hover:not(:disabled) { background:#e8effc; border-color:#aabfea; transform:translateY(-1px); }
+.profile-app .profile-primary-btn:active:not(:disabled),.profile-app .profile-secondary-btn:active:not(:disabled) { transform:scale(.98); }
+.profile-app button:disabled { opacity:.6; cursor:not-allowed; }
+.profile-history-shortcut { margin-top:18px; width:100%; padding:18px 20px; display:flex; gap:15px; align-items:center; text-align:left; border:1px solid #e1e9f8; background:#f7f9fe; border-radius:12px; color:#435b85; cursor:pointer; font:inherit; transition:background 150ms ease,border-color 150ms ease; }
+.profile-history-shortcut:hover { background:#edf3ff; border-color:#b6caf4; }
+.profile-shortcut-icon { display:grid; place-items:center; width:36px; height:36px; flex-shrink:0; background:#eaf0ff; border-radius:9px; font-size:24px; color:#416df5; }
+.profile-history-shortcut > span:nth-child(2) { min-width:0; }
+.profile-history-shortcut strong { display:block; font-size:14px; font-weight:600; }
+.profile-history-shortcut small { display:block; margin-top:5px; font-size:12px; color:#61718a; line-height:1.6; }
+.profile-history-shortcut > span:last-child { margin-left:auto; }
+.profile-app .profile-muted { font-size:12px; color:#61718a; line-height:1.7; }
+.profile-app .round-list { max-height:none; overflow:visible; gap:10px; }
+.profile-app .round-item { width:100%; display:flex; justify-content:space-between; align-items:center; gap:15px; padding:16px; min-height:78px; border:1px solid #e5eaf3; border-radius:9px; background:#fff; box-shadow:none; text-align:left; font:inherit; color:#34445c; cursor:pointer; transition:background 150ms ease,border-color 150ms ease,transform 150ms ease; }
+.profile-app .round-item:hover { background:#f5f8ff; border-color:#afc4ef; transform:translateX(2px); }
+.profile-app .round-item strong { display:block; color:#34445c; font-size:14px; }
+.profile-app .round-item > div > span { display:block; margin-top:5px; color:#66758c; font-size:12px; }
+.profile-app .round-item-meta { display:flex; flex-wrap:wrap; gap:7px; }
+.profile-app .round-item .round-item-meta span { margin:0; font-size:11px; border:1px solid #e2e9f7; border-radius:6px; padding:4px 7px; background:#f3f6fc; color:#4f6385; }
+.profile-app .round-analysis { margin:0 0 18px; padding:18px; border:1px solid #e1e9f8; border-radius:9px; background:#f4f7fe; color:#425776; white-space:pre-wrap; line-height:1.8; }
+.profile-app .round-analysis h3 { margin:0 0 10px; font-size:14px; }
+.profile-app .round-answer-card { background:#fff; border:1px solid #e5eaf2; padding:18px; border-radius:10px; }
+.profile-app .round-answer-header strong { font-size:14px; color:#34445c; }
+.profile-app .round-question,.profile-app .round-answer-block { white-space:pre-wrap; overflow-wrap:anywhere; color:#425776; font-size:13px; line-height:1.8; }
+.profile-app .round-answer-block { background:#f8fafc; border:1px solid #edf0f5; border-radius:8px; }
+.profile-app .round-answer-block span { color:#61718a; font-size:12px; }
+.profile-app .verdict-pill { font-size:11px; padding:4px 8px; border-radius:6px; }
+.profile-app .profile-empty { padding:32px 18px; background:#f8fafc; border:1px dashed #dce5f2; color:#61718a; border-radius:9px; font-size:13px; }
+.profile-security-note { color:#61718a; font-size:13px; line-height:1.8; margin:0 0 24px; }
+.profile-app .profile-password-form { max-width:500px; margin:0; border:0; padding:0; background:transparent; gap:18px; }
+.profile-app .profile-password-form label { font-size:13px; color:#425776; gap:9px; }
+.profile-app .profile-password-form input { width:100%; min-height:43px; padding:10px 12px; border:1px solid #dce4f1; border-radius:8px; background:#fafbfe; color:#33445e; font:inherit; }
+.profile-password-actions { display:flex; gap:10px; }
+.profile-app .profile-message { min-height:0; margin:0; color:#a34f3d; line-height:1.7; font-size:13px; }
+.profile-app .profile-message.success { color:#2f7052; }
+.profile-page-message { max-width:1000px; background:#fff3f0; color:#a34f3d; border:1px solid #f0d2c9; border-radius:9px; padding:12px 15px; margin-bottom:18px; font-size:13px; line-height:1.7; }
+.profile-page-message.is-loading { background:#f0f5ff; border-color:#dce6fa; color:#435b85; }
+.profile-view:not([hidden]) { animation:profilePanelIn 220ms ease-out; }
+@keyframes profilePanelIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+body.dark-theme.profile-body { background:#0f192a; }
+body.dark-theme .profile-sidebar-user { border-color:#2d3d56; }
+body.dark-theme .profile-sidebar-user strong,body.dark-theme .profile-page-heading h1,body.dark-theme .profile-app .profile-card-header h2,body.dark-theme .profile-app .profile-info-list strong,body.dark-theme .profile-app .round-item strong,body.dark-theme .profile-app .round-answer-header strong { color:#dce5f3; }
+body.dark-theme .profile-sidebar-user #profile-email,body.dark-theme .profile-page-heading p,body.dark-theme .profile-breadcrumb,body.dark-theme .profile-app .profile-muted,body.dark-theme .profile-app .profile-info-list span,body.dark-theme .profile-security-note,body.dark-theme .profile-app .profile-password-form label,body.dark-theme .profile-history-shortcut small,body.dark-theme .profile-app .round-item > div > span { color:#b3c4df; }
+body.dark-theme .profile-app .profile-card,body.dark-theme .profile-app .round-item,body.dark-theme .profile-app .round-answer-card { background:#152238; border-color:#2d3d56; }
+body.dark-theme .profile-app .profile-secondary-btn,body.dark-theme .profile-history-shortcut,body.dark-theme .profile-app .round-analysis,body.dark-theme .profile-app .round-answer-block,body.dark-theme .profile-app .profile-empty,body.dark-theme .profile-app .round-item .round-item-meta span { background:#1b2d49; border-color:#3a5279; color:#c2d4ef; }
+body.dark-theme .profile-app .profile-info-list > div,body.dark-theme .profile-info-actions { border-color:#2d3d56; }
+body.dark-theme .profile-app .round-question,body.dark-theme .profile-app .round-answer-block,body.dark-theme .profile-app .round-answer-block span { color:#c2d4ef; }
+body.dark-theme .profile-app .round-item:hover { background:#223554; border-color:#6b8ec8; }
+@media(max-width:640px) {
+  .profile-app .profile-sidebar { flex-wrap:wrap; padding:0 12px; }
+  .profile-sidebar-user { display:none; }
+  .profile-app .profile-navigation { order:3; flex:0 0 100%; justify-content:space-between; margin:0; padding:3px 0 8px; }
+  .profile-app .profile-navigation .bank-nav { flex:1; justify-content:center; font-size:12px; gap:5px; }
+  .profile-app .profile-sidebar-bottom { margin-left:auto; }
+  .profile-app .profile-sidebar-bottom .bank-nav { margin:0; padding:6px; font-size:11px; }
+  .profile-app .profile-main { padding:12px 16px 30px; }
+  .profile-app .profile-breadcrumb { display:none; }
+  .profile-page-heading { margin-bottom:22px; }
+  .profile-page-heading h1 { font-size:23px; }
+  .profile-app .profile-card { padding:18px 16px; }
+  .profile-app .profile-info-list > div { grid-template-columns:95px minmax(0,1fr); gap:10px; }
+  .profile-app .round-item { flex-direction:column; align-items:flex-start; }
+  .profile-app .profile-card-header { flex-wrap:wrap; }
+  .profile-app .profile-password-form input { font-size:16px; }
+  .profile-app .profile-card-header h2 { font-size:15px; }
+}

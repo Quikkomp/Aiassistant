@@ -1,7 +1,10 @@
 # document_loader.py
 import os
 from docx import Document
-from PyPDF2 import PdfReader, errors
+try:
+    from PyPDF2 import PdfReader, errors
+except ImportError:
+    from pypdf import PdfReader, errors
 from pptx import Presentation
 
 
