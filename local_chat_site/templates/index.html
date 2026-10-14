@@ -6,8 +6,9 @@
   <title>Local Model Knowledge Base Assistant</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=bank-20261009" />
   <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=bank-20261010-loading" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}?v=auth-20261010" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='exams.css') }}?v=exams-20261010-list" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}?v=auth-20261014-recovery" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='exams.css') }}?v=exams-20261014-scroll" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='groups.css') }}?v=groups-20261014" />
 </head>
 <body class="{% if not auth.authenticated %}auth-open{% endif %}">
   <section id="auth-screen" class="auth-screen {% if auth.authenticated %}hidden{% endif %}" aria-label="Account access">
@@ -23,10 +24,10 @@
         <div class="auth-card-inner">
           <form id="login-form" class="auth-form" autocomplete="on">
             <h2>Sign in to Exercise Generator</h2>
-            <p>Use your username and password to access your exercise workspace</p>
+            <p>Sign in with your username or registered email and password</p>
 
-            <label>Username
-              <input id="login-username" name="username" type="text" placeholder="Enter your username" autocomplete="username" required />
+            <label>Username or email
+              <input id="login-username" name="username" type="text" placeholder="Enter username or email" autocomplete="username" autocapitalize="none" maxlength="254" required />
             </label>
 
             <label>Password
@@ -35,7 +36,7 @@
 
             <div class="auth-row">
               <label class="auth-check"><input id="remember-me" type="checkbox" checked /> <span>Remember me</span></label>
-              <button class="auth-link" type="button" data-auth-mode="register">Create account</button>
+              <div class="auth-inline-links"><button class="auth-link" type="button" data-auth-mode="register">Create account</button><span aria-hidden="true">·</span><button id="forgot-password-btn" class="auth-forgot-link" type="button" data-auth-mode="forgot">Forgot password?</button></div>
             </div>
 
             <div id="login-message" class="auth-message"></div>
@@ -49,8 +50,8 @@
             <p>Complete the form below to create your personal exercise workspace</p>
 
             <label>Username
-              <input id="register-username" name="username" type="text" placeholder="Create a username" autocomplete="username" required />
-              <span>Choose a unique username for signing in.</span>
+              <input id="register-username" name="username" type="text" placeholder="e.g. student_2026" autocomplete="username" autocapitalize="none" minlength="3" maxlength="32" required />
+              <span>3–32 characters: Chinese, letters, numbers, _, - and .; start and end with a letter or number.</span>
             </label>
 
             <label>Email address
@@ -60,10 +61,10 @@
 
             <div class="auth-two">
               <label>Password
-                <input id="register-password" name="password" type="password" placeholder="Create a password" autocomplete="new-password" required />
+                <input id="register-password" name="password" type="password" placeholder="Create a password (8–128 characters)" autocomplete="new-password" minlength="8" maxlength="128" required />
               </label>
               <label>Confirm password
-                <input id="register-confirm" name="confirm_password" type="password" placeholder="Re-enter password" autocomplete="new-password" required />
+                <input id="register-confirm" name="confirm_password" type="password" placeholder="Re-enter password" autocomplete="new-password" minlength="8" maxlength="128" required />
               </label>
             </div>
 
@@ -71,6 +72,24 @@
             <div id="register-message" class="auth-message"></div>
             <button class="auth-primary gold" type="submit">Create Account</button>
             <div class="auth-switch">Already have an account? <button type="button" data-auth-mode="login">Sign in</button></div>
+          </form>
+          <form id="forgot-form" class="auth-form hidden" autocomplete="on">
+            <h2 data-recovery-i18n="title">找回密码</h2>
+            <p data-recovery-i18n="intro">验证注册邮箱，安全找回你的学习空间。</p>
+            <ol class="auth-recovery-steps" aria-label="重置密码步骤"><li><span aria-hidden="true">1</span><strong data-recovery-i18n="emailStep">填写邮箱</strong></li><li><span aria-hidden="true">2</span><strong data-recovery-i18n="codeStep">验证邮箱</strong></li><li><span aria-hidden="true">3</span><strong data-recovery-i18n="passwordStep">设置密码</strong></li></ol>
+            <label><span data-recovery-i18n="email">注册邮箱</span><input id="recovery-email" type="email" autocomplete="email" maxlength="254" required /><small data-recovery-i18n="emailHint">请输入注册时填写的邮箱，不是网站的发信邮箱。</small></label>
+            <fieldset id="recovery-code-step" disabled hidden>
+              <label><span data-recovery-i18n="code">六位邮箱验证码</span><input id="recovery-code" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" required /></label>
+              <div class="auth-recovery-resend"><span data-recovery-i18n="codeHint">验证码 10 分钟内有效，最多尝试 5 次。</span><button id="recovery-resend" class="auth-forgot-link" type="button">重新发送</button></div>
+            </fieldset>
+            <fieldset id="recovery-password-step" disabled hidden>
+              <label><span data-recovery-i18n="newPassword">新密码</span><input id="recovery-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required /><small data-recovery-i18n="passwordHint">8–128 位，不需要额外设置一套邮箱登录密码。</small></label>
+              <label><span data-recovery-i18n="confirmPassword">确认新密码</span><input id="recovery-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required /></label>
+            </fieldset>
+            <div id="forgot-message" class="auth-message" role="status" aria-live="polite"></div>
+            <button id="recovery-submit" class="auth-primary" type="submit">发送验证码</button>
+            <button id="recovery-restart" class="auth-forgot-link auth-recovery-restart" type="button" hidden data-recovery-i18n="changeEmail">更换邮箱或重新验证</button>
+            <div class="auth-switch"><button type="button" data-auth-mode="login" data-recovery-i18n="backLogin">← 返回登录</button></div>
           </form>
         </div>
       </section>
@@ -109,6 +128,7 @@
       <nav class="bank-navigation" aria-label="Main navigation">
         <button id="nav-library" class="bank-nav active" type="button" aria-current="page"><span aria-hidden="true">▣</span><span data-bank-i18n="library">题库</span><small id="sidebar-bank-count">0</small></button>
         <button id="nav-exams" class="bank-nav" type="button"><span aria-hidden="true">▤</span><span data-exam-i18n="exams">考试</span></button>
+        <button id="nav-groups" class="bank-nav" type="button"><span aria-hidden="true">♧</span><span data-group-i18n="groups">小组</span></button>
         <button id="nav-practice" class="bank-nav" type="button"><span aria-hidden="true">✎</span><span data-bank-i18n="practice">练习</span></button>
       </nav>
       <div class="bank-sidebar-bottom"><a class="bank-nav bank-profile-link" href="/profile" aria-label="个人中心"><span class="bank-profile-avatar" id="bank-profile-avatar" aria-hidden="true">{{ (auth.username[:1] if auth.username else "U")|upper }}</span><span class="bank-profile-label"><span data-bank-i18n="profile">个人中心</span><small id="bank-profile-name">{{ auth.username or "" }}</small></span><span class="bank-profile-arrow" aria-hidden="true">›</span></a><p>MetaThink &amp; STEAM Lab @ XJTLU</p></div>
@@ -199,8 +219,10 @@
           </details>
         </section>
         <section id="exam-view" class="exam-view" hidden aria-label="考试">
-          <div id="exam-message" class="bank-message" role="status" hidden></div>
           <div id="exam-content"></div>
+        </section>
+        <section id="group-view" class="exam-view group-view" hidden aria-label="学习小组">
+          <div id="group-content"></div>
         </section>
       </main>
     </div>
@@ -531,8 +553,13 @@
 </div>
 
 
-<script src="{{ url_for('static', filename='app.js') }}?v=bank-20261010-exams"></script>
-<script src="{{ url_for('static', filename='question-bank.js') }}?v=bank-20261010-loading"></script>
-<script src="{{ url_for('static', filename='exams.js') }}?v=exams-20261010-list"></script>
+<!-- Outside animated workspace containers so fixed notices use the viewport. -->
+<div id="exam-message" class="bank-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+<div id="group-message" class="bank-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+<script src="{{ url_for('static', filename='app.js') }}?v=bank-20261014-auth"></script>
+<script src="{{ url_for('static', filename='auth-recovery.js') }}?v=auth-20261014-recovery"></script>
+<script src="{{ url_for('static', filename='question-bank.js') }}?v=bank-20261014-groups"></script>
+<script src="{{ url_for('static', filename='exams.js') }}?v=exams-20261014-groups"></script>
+<script src="{{ url_for('static', filename='groups.js') }}?v=groups-20261014"></script>
 </body>
 </html>

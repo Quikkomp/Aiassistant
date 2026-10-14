@@ -39,11 +39,11 @@
           <section id="round-detail" class="profile-card round-detail" hidden><div class="profile-card-header"><div><h2 id="round-detail-title">练习详情</h2><p id="round-detail-meta" class="profile-muted"></p></div><button id="close-round-detail" class="profile-secondary-btn" type="button" data-profile-i18n="backHistory">返回记录</button></div><div id="round-analysis" class="round-analysis"></div><div id="round-answers" class="round-answers"></div></section>
         </section>
         <section id="profile-security-view" class="profile-view" aria-labelledby="profile-section-title" hidden>
-          <article class="profile-card profile-security-card"><div class="profile-card-header"><h2 data-profile-i18n="changePassword">修改密码</h2><span class="profile-section-icon" aria-hidden="true">⚿</span></div><p class="profile-security-note" data-profile-i18n="passwordHint">新密码至少 6 个字符，建议使用不重复的字母、数字与符号组合。</p>
+          <article class="profile-card profile-security-card"><div class="profile-card-header"><h2 data-profile-i18n="changePassword">修改密码</h2><span class="profile-section-icon" aria-hidden="true">⚿</span></div><p class="profile-security-note" data-profile-i18n="passwordHint">新密码应为 8–128 个字符，建议使用不重复的字母、数字与符号组合。</p>
             <form id="password-form" class="profile-password-form">
               <label><span data-profile-i18n="currentPassword">当前密码</span><input id="current-password" type="password" autocomplete="current-password" required /></label>
-              <label><span data-profile-i18n="newPassword">新密码</span><input id="new-password" type="password" autocomplete="new-password" minlength="6" required /></label>
-              <label><span data-profile-i18n="confirmPassword">确认新密码</span><input id="confirm-password" type="password" autocomplete="new-password" minlength="6" required /></label>
+              <label><span data-profile-i18n="newPassword">新密码</span><input id="new-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required /></label>
+              <label><span data-profile-i18n="confirmPassword">确认新密码</span><input id="confirm-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required /></label>
               <div id="password-message" class="profile-message" role="status" aria-live="polite"></div>
               <div class="profile-password-actions"><button class="profile-primary-btn" type="submit" data-profile-i18n="savePassword">更新密码</button><button id="clear-password-btn" class="profile-secondary-btn" type="button" data-profile-i18n="clear">清空</button></div>
             </form>
@@ -52,6 +52,6 @@
       </main>
     </div>
   </div>
-  <script src="{{ url_for('static', filename='profile.js') }}?v=profile-20261010"></script>
+  <script src="{{ url_for('static', filename='profile.js') }}?v=profile-20261014-auth"></script>
 </body>
 </html>

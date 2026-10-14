@@ -23,6 +23,7 @@
     allDone:['全部题目已完成，可查看成绩。','All questions are graded. View your score.'], loading:['加载中…','Loading…'], working:['正在处理，请稍候…','Working…'], students:['学生完成情况','Student progress'], noneStudents:['还没有学生开始作答。','No student has started yet.'], newExam:['新建考试副本','New exam copy'],
     analytics:['成绩分析','Results analytics'], started:['已开始人数','Started'], completedCount:['已完成人数','Completed'], average:['平均分','Average'], passRate:['及格率','Pass rate'], completionRate:['完成率','Completion rate'], highest:['最高分','Highest'], lowest:['最低分','Lowest'], median:['中位数','Median'], distribution:['成绩分布','Score distribution'], accuracy:['逐题正确率','Question accuracy'], groupWeakness:['薄弱知识点','Group weaknesses'], correct:['正确','Correct'], partial:['部分正确','Partial'], wrong:['错误','Incorrect'], mastery:['平均得分率','Mean credit'], refresh:['刷新数据','Refresh'], analyticsNote:['仅统计已完成考试的成绩，统一折算为百分制；及格线为 60 分。薄弱知识点按平均得分率低于 80% 展示，名单显示最近 200 人。','Completed attempts only; marks normalized to 100, pass threshold 60. Knowledge points below 80% mean credit are listed. Roster shows the latest 200 students.'], noStats:['还没有已完成的考试，暂不生成成绩分布。','No completed attempts yet. Score distribution is not available.'],
     participants:['参与学生','Participants'], finishedStudents:['已完成','Completed'], gradedCount:['已批改作答','Graded answers'], averageShort:['平均分 / 100','Average / 100'], expand:['展开','Expand'], collapse:['收起','Collapse'], studentName:['学生','Student'], progress:['答题进度','Progress'], score100:['成绩 / 100','Score / 100'], submittedAt:['完成时间','Completed at'], viewExam:['查看试卷','View paper'], rowNote:['平均分仅统计已完成考试；数据量为已批改的题目作答数。展开可查看最近 200 位参与学生。','Average includes completed attempts only; data volume counts graded question answers. Expand to see the latest 200 participants.'],
+    assigned:['待参加','Not started'], groupBack:['← 返回小组','← Back to group'], groupPublish:['发布到小组','Assign to group'],
   };
   const zh = () => currentLang === 'zh';
   const t = key => W[key]?.[zh()?0:1] || key;
@@ -31,6 +32,7 @@
   let analytics=null;
   const expandedExams=new Set(), rosterCache=new Map();
   let lastContentKey='';
+  let groupContext=null;
   const node=(tag,value='',attrs={})=>{
     const el=document.createElement(tag); el.textContent=value;
     for(const [key,val] of Object.entries(attrs)) el.setAttribute(key,String(val));
@@ -68,9 +70,11 @@
   }
   function enter() {
     epoch++;
+    lastContentKey='';
+    window.groupUI?.leave();
     window.bankUI?.scheduleSave(true);
     $('bank-library-view').hidden=true; $('bank-practice-view').hidden=true; $('exam-view').hidden=false;
-    for(const id of ['nav-library','nav-practice','nav-exams']) {$(id).classList.toggle('active',id==='nav-exams'); $(id).removeAttribute('aria-current');}
+    for(const id of ['nav-library','nav-practice','nav-exams','nav-groups']) {$(id).classList.toggle('active',id==='nav-exams'); $(id).removeAttribute('aria-current');}
     $('nav-exams').setAttribute('aria-current','page'); message();
   }
   function heading(title,subtitle,actions=[]) {
@@ -84,13 +88,19 @@
     input.value=value??''; input.disabled=disabled; input.addEventListener('input',()=>handler(input.value)); wrap.append(input); return wrap;
   }
   function content(...children) {
-    $('exam-content').replaceChildren(...children);
     const key=mode+((mode==='attempt'||mode==='editor')?`:${index}`:'');
-    if(key!==lastContentKey) window.scrollTo({top:0,behavior:'instant'});
-    lastContentKey=key; animate();
+    const navigating=key!==lastContentKey;
+    const position={left:window.scrollX,top:window.scrollY};
+    $('exam-content').replaceChildren(...children);
+    // Replacing the whole view can reset browser scroll anchoring, even without
+    // an explicit scroll request. Only new pages/questions should go to the top.
+    window.scrollTo(navigating?{left:0,top:0,behavior:'instant'}:{...position,behavior:'instant'});
+    lastContentKey=key;
+    if(navigating) animate();
   }
   function authenticated() {return !$('account-chip').classList.contains('hidden') && !!$('account-name').textContent.trim();}
   async function loadCatalog() {
+    groupContext=null;
     enter(); mode='catalog';
     if(!authenticated()) {content(heading(t('exams'),t('subtitle')),node('p',t('login'),{class:'exam-notice'})); return;}
     message(t('loading'));
@@ -112,9 +122,11 @@
     for(const row of rows) {
       const tile=node('button','',{class:'exam-set',type:'button'});
       tile.append(node('span','▤',{class:'exam-set-icon','aria-hidden':'true'}),node('strong',row.title),node('small',tab==='banks'?`${row.questions.length} ${t('count')} · ${t('edit')}`:t(row.status==='published'?'pubStatus':row.status)));
+      if(row.group_names?.length)tile.append(node('small',row.group_names.join(' · ')));
       tile.addEventListener('click',()=>run(async()=>{
         if(tab==='banks') {draft=(await api('/api/exams',{bank_id:row.id})).exam;index=0;mode='editor';renderEditor();message();}
         else if(tab==='published') {draft=(await api(`/api/exams/${row.id}`)).exam;index=0;mode='editor';renderEditor();message();}
+        else if(row.status==='assigned') {await openExam(row.token);}
         else {attempt=(await api(`/api/exam_attempts/${row.id}`)).attempt;index=0;supportText='';mode=attempt.status==='completed'?'result':'attempt';render();message();}
       })); grid.append(tile);
     }
@@ -201,9 +213,10 @@
   }
   function renderEditor() {
     const editing=draft.status==='draft', q=draft.questions[index], layout=node('div','',{class:'exam-editor-layout'}), outline=card(); outline.classList.add('exam-outline');
-    const actions=editing?[button(t('save'),async()=>{await saveDraft();renderEditor();message(t('saved'));}),button(t('publish'),openPublish,true)]:[button(t('share'),showShare,true),button(t('analytics'),showStudents)];
+    const actions=editing?[button(t('save'),async()=>{await saveDraft();renderEditor();message(t('saved'));}),button(t(groupContext?.publish?'groupPublish':'publish'),openPublish,true)]:[button(t('share'),showShare,true),button(t('analytics'),showStudents)];
     if(draft.status==='published') actions.push(button(t('closeExam'),async()=>{if(confirm(t('closeConfirm'))){draft=(await api(`/api/exams/${draft.id}/close`,{})).exam;renderEditor();message();}}));
     const meta=card();
+    if(groupContext?.publish)meta.append(node('p',(zh()?'发布目标：':'Assign to: ')+groupContext.name,{class:'exam-notice'}));
     meta.append(field(t('title'),draft.title,v=>draft.title=v,{disabled:!editing}),field(t('desc'),draft.description,v=>draft.description=v,{disabled:!editing}),node('p',t('teacherNote'),{class:'exam-subtle'}));
     draft.questions.forEach((item,i)=>{
       const btn=node('button',`${t('question')} ${i+1}`,{type:'button',class:i===index?'selected':'','aria-current':i===index?'true':'false'});
@@ -220,7 +233,7 @@
     row.append(types,field(t('points'),q.points,v=>q.points=Number(v),{type:'number',disabled:!editing}));detail.append(row);
     for(const key of ['answer','explanation','rubric','knowledge']) detail.append(field(t(key),q[key],v=>q[key]=v,{tag:key==='knowledge'?'input':'textarea',disabled:!editing}));
     layout.append(outline,detail);
-    content(button(t('back'),loadCatalog),heading(draft.title,t(editing?'draft':draft.status==='published'?'pubStatus':'closed'),actions),meta,layout);
+    content(button(t(groupContext?'groupBack':'back'),groupContext?()=>window.groupUI.open(groupContext.id):loadCatalog),heading(draft.title,t(editing?'draft':draft.status==='published'?'pubStatus':'closed'),actions),meta,layout);
   }
   function modal(title) {
     dialog?.remove();dialog=node('dialog','',{class:'exam-dialog'});
@@ -235,6 +248,11 @@
     label.append(check,document.createTextNode(' '+t('review')));
     const publish=button(t('confirmPublish'),async()=>{
       if(!check.checked) throw new Error(t('review'));
+      if(groupContext?.publish){
+        const target=groupContext;
+        const result=await api(`/api/groups/${target.id}/exams`,{exam_id:draft.id,version:draft.version,reviewed:true});
+        dialog.close();await window.groupUI.open(target.id,zh()?`已发布给 ${result.delivered_count} 位组员。`:`Assigned to ${result.delivered_count} members.`);return;
+      }
       draft=(await api(`/api/exams/${draft.id}/publish`,{version:draft.version,reviewed:true})).exam;
       dialog.close();renderEditor();showShare();message();
     },true);
@@ -369,8 +387,11 @@
   }
   function render() {if(mode==='catalog')renderCatalog();else if(mode==='editor')renderEditor();else if(mode==='intro')renderIntro();else if(mode==='attempt')renderAttempt();else if(mode==='analytics')renderAnalytics();else renderResult();}
   window.examUI={
-    leave(){epoch++;operation++;busy=false;$('exam-view').hidden=true;$('nav-exams').classList.remove('active');$('nav-exams').removeAttribute('aria-current');dialog?.close();},
-    reset(){this.leave();draft=null;attempt=null;info=null;supportText='';banks=[];catalog={owned:[],joined:[]};expandedExams.clear();rosterCache.clear();mode='catalog';lastContentKey='';busy=false;$('exam-content').replaceChildren();},
+    editBank(bankId,target){return run(async()=>{const data=await api('/api/exams',{bank_id:bankId});enter();groupContext=target;draft=data.exam;index=0;mode='editor';renderEditor();message();});},
+    openOwned(id,target=null){return run(async()=>{const data=await api(`/api/exams/${id}`);enter();groupContext=target;draft=data.exam;index=0;mode='editor';renderEditor();message();});},
+    openToken(token){groupContext=null;return run(()=>openExam(token));},
+    leave(){epoch++;operation++;busy=false;message();$('exam-view').hidden=true;$('nav-exams').classList.remove('active');$('nav-exams').removeAttribute('aria-current');dialog?.close();},
+    reset(){this.leave();groupContext=null;draft=null;attempt=null;info=null;supportText='';banks=[];catalog={owned:[],joined:[]};expandedExams.clear();rosterCache.clear();mode='catalog';lastContentKey='';busy=false;$('exam-content').replaceChildren();},
     translate(){document.querySelectorAll('[data-exam-i18n]').forEach(el=>el.textContent=t(el.dataset.examI18n));if(!$('exam-view').hidden&&!busy)render();},
     resumeLink(){const token=location.pathname.match(/^\/exam\/([a-f0-9]{48})\/?$/)?.[1];if(token&&authenticated())run(()=>openExam(token));},
   };

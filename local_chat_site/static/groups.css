@@ -1,0 +1,55 @@
+/* Group administration uses the same neutral cards and restrained blue as exams. */
+.group-list { display:grid; gap:16px; }
+.group-list-row,.group-exam-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:28px; border:1px solid #e2e9f4; border-radius:13px; padding:24px; background:#fff; transition:border-color 150ms,box-shadow 150ms; }
+.group-list-row:hover,.group-exam-row:hover { border-color:#bfcef2; box-shadow:0 4px 16px #416df508; }
+.group-list-row h2,.group-exam-row h2 { margin:10px 0 6px; font-size:17px; line-height:1.6; overflow-wrap:anywhere; }
+.group-list-row p,.group-exam-row p,.group-exam-row small { margin:0; color:#63738b; font-size:12px; line-height:1.8; overflow-wrap:anywhere; }
+.group-role { display:inline-flex; padding:4px 9px; border-radius:6px; color:#64748b; background:#f1f4f9; font-size:11px; }
+.group-role.owner { color:#365dc2; background:#edf2ff; }
+.group-list-metrics { display:grid; grid-template-columns:auto auto; gap:8px 10px; align-items:center; font-size:12px; color:#63738b; }
+.group-list-metrics strong { color:#365277; font-size:20px; font-variant-numeric:tabular-nums; }
+.group-detail-meta { margin:0 0 20px; font-size:12px; color:#63738b; line-height:1.7; }
+.group-members { margin-top:20px; }
+.group-member-row { display:grid; grid-template-columns:40px minmax(0,1fr) auto; align-items:center; gap:14px; padding:18px 0; border-bottom:1px solid #e7edf6; }
+.group-member-row:last-child { border:0; }
+.group-avatar { display:grid; place-items:center; width:38px; height:38px; border-radius:11px; color:#416df5; background:#edf2ff; font-weight:700; }
+.group-member-row strong { display:block; color:#344a69; font-size:14px; overflow-wrap:anywhere; }
+.group-member-row small { display:block; margin-top:5px; color:#63738b; font-size:11px; line-height:1.8; }
+.group-exam-row { grid-template-columns:minmax(0,1fr) auto; }
+.group-results-controls { display:flex; align-items:flex-end; gap:14px; margin-bottom:20px; }
+.group-results-controls .exam-field { flex:1; margin:0; }
+.group-table-scroll { overflow:auto; margin-top:18px; }
+.group-table-scroll table { min-width:620px; }
+.group-dialog h3 { margin:24px 0 12px; font-size:15px; }
+.group-dialog .exam-field { margin-top:14px; }
+.group-dialog input:not([type="checkbox"]),.group-dialog textarea,.group-dialog select { width:100%; min-width:0; box-sizing:border-box; border:1px solid #dce4ef; border-radius:8px; padding:11px 12px; background:#fbfcfe; color:#293b54; font:inherit; font-size:14px; line-height:1.7; }
+.group-dialog .exam-subtle { margin:12px 0; }
+.group-dialog-message[hidden] { display:none; }
+#group-message { position:fixed; top:82px; right:24px; z-index:40; width:max-content; max-width:min(440px,calc(100vw - 32px)); box-sizing:border-box; margin:0; background:#f2f6ff; border-color:#d8e4fc; color:#3657a0; box-shadow:0 6px 22px #243b6412; overflow-wrap:anywhere; pointer-events:none; }
+#group-message[hidden] { display:none; }
+#group-message.is-error { color:#ab5143; background:#fff4f2; border-color:#f0dbd6; }
+body.dark-theme .group-list-row,body.dark-theme .group-exam-row { background:#182536; border-color:#30445d; }
+body.dark-theme .group-list-row h2,body.dark-theme .group-exam-row h2,body.dark-theme .group-member-row strong,body.dark-theme .group-list-metrics strong { color:#d3def0; }
+body.dark-theme .group-list-row p,body.dark-theme .group-exam-row p,body.dark-theme .group-exam-row small,body.dark-theme .group-detail-meta,body.dark-theme .group-member-row small { color:#a7b8ce; }
+body.dark-theme .group-role,body.dark-theme .group-avatar { color:#bdd0ff; background:#243754; }
+body.dark-theme .group-member-row { border-color:#30445d; }
+body.dark-theme .group-dialog input,body.dark-theme .group-dialog textarea,body.dark-theme .group-dialog select { background:#132033; border-color:#3b5278; color:#d3def0; }
+body.dark-theme #group-message { color:#bdd0ff; background:#20314c; border-color:#3b5278; }
+body.dark-theme #group-message.is-error { color:#ffc0b4; background:#422c30; border-color:#70464a; }
+@media(max-width:900px) { .group-list-row { grid-template-columns:minmax(0,1fr) auto; gap:16px; }.group-list-row>.exam-btn { grid-column:1/-1; justify-self:start; }.group-member-row { grid-template-columns:38px minmax(0,1fr); }.group-member-row>.exam-actions { grid-column:2; } }
+@media(max-width:640px) { .group-list-row,.group-exam-row { padding:18px; gap:14px; }.group-exam-row { grid-template-columns:minmax(0,1fr); }.group-list-row h2,.group-exam-row h2 { font-size:15px; }.group-member-row { padding:16px 0; }.group-member-row .exam-btn { min-height:36px; padding:7px 10px; font-size:12px !important; }#group-message { top:70px;right:16px;font-size:12px; }.bank-brand { font-size:12px; }.bank-brand .logo-img { width:22px;height:22px; }.bank-navigation { gap:0; }.bank-nav { padding:8px 5px; } }
+@media(prefers-reduced-motion:reduce) { .group-list-row,.group-exam-row { transition:none; } }
+@media(max-width:640px) { .bank-navigation .bank-nav { gap:2px; padding:8px 4px; }.bank-navigation .bank-nav>span:first-child { width:16px;font-size:18px; } }
+@media(max-width:380px) { .bank-brand { font-size:0; }.bank-brand .logo-img { width:26px;height:26px; } }
+@media(max-width:640px) {
+  .group-table-scroll table { min-width:0; }
+  .group-table-scroll thead { display:none; }
+  .group-table-scroll tbody { display:grid; gap:12px; }
+  .group-table-scroll tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); padding:12px; border:1px solid #e2e9f4; border-radius:9px; }
+  .group-table-scroll td { display:flex; flex-direction:column; gap:4px; padding:8px; border:0; text-align:left !important; }
+  .group-table-scroll td::before { content:attr(data-label); font-size:11px; font-weight:400; color:#63738b; }
+  .group-table-scroll td:first-child,.group-table-scroll td:last-child { grid-column:1/-1; }
+  .group-table-scroll td:first-child { font-weight:600; }
+  body.dark-theme .group-table-scroll tr { border-color:#30445d; }
+  body.dark-theme .group-table-scroll td::before { color:#a7b8ce; }
+}

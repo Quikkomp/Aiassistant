@@ -1,0 +1,83 @@
+// Two browser accounts with actual groups/exams routes and disposable SQLite.
+const {spawn}=require('node:child_process'),path=require('node:path'),fs=require('node:fs'),assert=require('node:assert/strict');
+const {chromium}=require('C:/Users/10657/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'output/ui-review');fs.mkdirSync(out,{recursive:true});
+const fixture=spawn('C:/Users/10657/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe',[path.join(__dirname,'exam_fixture.py')],{cwd:root,windowsHide:true});
+let logs='';fixture.stderr.on('data',chunk=>logs+=chunk);
+const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',chunk=>{raw+=chunk;try{resolve(JSON.parse(raw.split('\n')[0]).port);}catch(_){}});fixture.on('exit',code=>reject(new Error('Fixture exited '+code+' '+logs)));setTimeout(()=>reject(new Error('Fixture timeout '+logs)),15000).unref();});
+(async()=>{
+  const base='http://127.0.0.1:'+await ready;
+  let browser;try{browser=await chromium.launch({headless:true});}catch(_){browser=await chromium.launch({headless:true,channel:'msedge'});}
+  try{
+    const teacherContext=await browser.newContext({viewport:{width:1440,height:1000}}),studentContext=await browser.newContext({viewport:{width:1440,height:1000}});
+    const teacher=await teacherContext.newPage(),student=await studentContext.newPage(),errors=[];
+    for(const page of [teacher,student]){page.on('pageerror',err=>errors.push(err.message));page.on('dialog',dialog=>dialog.accept());}
+    const groupBtn=(page,name)=>page.locator('#group-view').getByRole('button',{name,exact:true});
+    const examBtn=(page,name)=>page.locator('#exam-view').getByRole('button',{name,exact:true});
+    const login=async(page,username)=>{await page.locator('#login-username').fill(username);await page.locator('#login-password').fill('mock-password');await page.locator('#login-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
+    const capture=async(page,name)=>{await page.waitForFunction(()=>document.getAnimations().every(a=>a.playState==='finished'));await page.screenshot({path:path.join(out,name),fullPage:true});};
+    await teacher.goto(base);await login(teacher,'Teacher');await teacher.locator('#nav-groups').click();
+    await groupBtn(teacher,'创建小组').click();
+    await teacher.locator('.group-dialog').getByLabel('小组名称',{exact:true}).fill('物理学习小组 · 一起理解冰点');
+    await teacher.locator('.group-dialog').getByLabel('小组说明',{exact:true}).fill('一起复习课程概念，完成练习后回顾薄弱知识点。');
+    await teacher.locator('.group-dialog [type=submit]').click();await teacher.locator('.group-members').waitFor();
+    await groupBtn(teacher,'邀请组员').click();await teacher.locator('.group-dialog .exam-qr').waitFor();
+    await teacher.waitForFunction(()=>document.querySelector('.group-dialog .exam-qr')?.naturalWidth>0);
+    const link=await teacher.locator('.group-dialog input[readonly]').inputValue();assert.match(link,/\/group\/[a-f0-9]{48}$/);
+    await capture(teacher,'group-invite-desktop.png');
+    await teacher.locator('.group-dialog').getByRole('button',{name:'关闭',exact:true}).click();
+    await student.goto(link);assert.equal(await student.locator('#login-form').isVisible(),true);await login(student,'Student');
+    await groupBtn(student,'加入小组').waitFor();await groupBtn(student,'加入小组').click();await student.locator('.group-detail-meta').waitFor();
+    assert.equal(await groupBtn(student,'发布考试').count(),0);
+    await groupBtn(teacher,'刷新').click();await teacher.locator('.group-member-row').filter({hasText:'Student'}).waitFor();
+    await capture(teacher,'group-members-desktop.png');
+    await groupBtn(teacher,'发布考试').click();await teacher.locator('.group-dialog').getByRole('button',{name:'前往审核并发布',exact:true}).click();
+    await examBtn(teacher,'AI 补全缺失答案').waitFor();
+    await examBtn(teacher,'AI 补全缺失答案').click();await teacher.locator('#exam-message').filter({hasText:'AI 草稿已保存'}).waitFor();
+    await examBtn(teacher,'发布到小组').click();await teacher.locator('.exam-dialog input[type=checkbox]').check();
+    await teacher.locator('.exam-dialog').getByRole('button',{name:'确认发布',exact:true}).click();
+    await teacher.locator('#group-message').filter({hasText:'已发布给 1 位组员'}).waitFor();
+    await teacher.locator('#group-view').getByRole('tab',{name:'已发布考试',exact:true}).click();await teacher.locator('.group-exam-row').waitFor();
+    await capture(teacher,'group-exams-desktop.png');
+    await student.locator('#nav-exams').click();await student.getByRole('tab',{name:'我参与的',exact:true}).click();
+    await student.locator('.exam-set').waitFor();assert.equal(await student.locator('.exam-set').count(),1);assert.ok((await student.locator('.exam-set').textContent()).includes('待参加'));
+    await student.locator('.exam-set').click();await examBtn(student,'开始训练').click();
+    for(const answer of ['0°C','错误答案']){await student.locator('#exam-view textarea').fill(answer);await examBtn(student,'提交并锁定答案').click();await student.locator('.exam-grade').waitFor();if(answer==='0°C'){await examBtn(student,'下一题').click();await student.locator('#exam-view textarea').waitFor();}}
+    await examBtn(student,'完成考试 · 查看总成绩').click();await student.locator('#exam-view').getByText('薄弱点：冰点。请区分温度与物态变化。',{exact:true}).waitFor();assert.equal(await student.locator('.exam-score strong').textContent(),'50');
+    await teacher.locator('#group-view').getByRole('tab',{name:'成绩统计',exact:true}).click();await teacher.locator('#group-view .exam-stats-grid').waitFor();
+    assert.deepEqual(await teacher.locator('#group-view .exam-metric').allTextContents(),['1','1','1','50']);
+    assert.equal(await teacher.locator('#group-view .exam-roster-score').textContent(),'50');
+    await capture(teacher,'group-results-desktop.png');
+    const lateContext=await browser.newContext(),late=await lateContext.newPage();late.on('pageerror',err=>errors.push(err.message));
+    await late.goto(link);await login(late,'LateStudent');await groupBtn(late,'加入小组').click();
+    await late.locator('#nav-exams').click();await late.getByRole('tab',{name:'我参与的',exact:true}).click();await late.locator('.exam-set').waitFor();assert.equal(await late.locator('.exam-set').count(),1);
+    await groupBtn(teacher,'刷新').last().click();await teacher.waitForFunction(()=>document.querySelector('#group-view .exam-metric')?.textContent==='2');
+    assert.deepEqual(await teacher.locator('#group-view .exam-metric').allTextContents(),['2','1','1','50']);
+    await teacher.setViewportSize({width:390,height:844});assert.ok(await teacher.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await capture(teacher,'group-results-mobile.png');
+    await teacher.locator('#theme-toggle-btn').click();await capture(teacher,'group-results-dark-mobile.png');
+    await teacher.locator('#lang-toggle-btn').click();assert.equal(await teacher.locator('#group-view').getByRole('tab',{name:'Results',exact:true}).count(),1);
+    await teacher.locator('#lang-toggle-btn').click();await teacher.locator('#theme-toggle-btn').click();
+    await teacher.setViewportSize({width:360,height:800});assert.ok(await teacher.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await teacher.locator('#group-view').getByRole('tab',{name:'组员管理',exact:true}).click();await groupBtn(teacher,'刷新').click();
+    const lateRow=teacher.locator('.group-member-row').filter({hasText:'LateStudent'});await lateRow.getByRole('button',{name:'查看信息',exact:true}).click();
+    await teacher.locator('.group-dialog').getByText('待参加 · —',{exact:true}).waitFor();await capture(teacher,'group-member-info-mobile.png');
+    await teacher.locator('.group-dialog').getByRole('button',{name:'关闭',exact:true}).click();
+    await lateRow.getByRole('button',{name:'移出小组',exact:true}).click();await lateRow.getByRole('button',{name:'恢复组员',exact:true}).waitFor();
+    await late.locator('#nav-exams').click();await late.getByRole('tab',{name:'我参与的',exact:true}).click();await late.locator('.exam-empty').waitFor();assert.equal(await late.locator('.exam-set').count(),0);
+    await lateRow.getByRole('button',{name:'恢复组员',exact:true}).click();await lateRow.getByRole('button',{name:'移出小组',exact:true}).waitFor();
+    await teacher.setViewportSize({width:1440,height:1000});await groupBtn(teacher,'邀请组员').click();
+    await teacher.locator('.group-dialog').getByRole('button',{name:'更新邀请链接',exact:true}).click();
+    await teacher.waitForFunction(old=>document.querySelector('.group-dialog input[readonly]')?.value!==old,link);
+    assert.equal((await teacherContext.request.get(base+'/api/groups/shared/'+link.split('/').pop())).status(),404);
+    await teacher.locator('.group-dialog').getByRole('button',{name:'关闭',exact:true}).click();
+    await student.locator('#nav-groups').click();await groupBtn(student,'进入小组 →').click();
+    assert.equal(await student.locator('#group-view').getByRole('tab',{name:'成绩统计',exact:true}).count(),0);
+    await student.locator('#group-view').getByRole('tab',{name:'组员管理',exact:true}).click();assert.equal(await student.locator('.group-member-row').count(),1);
+    await groupBtn(student,'查看信息').click();await student.locator('.group-dialog').getByText('已完成 · 50 / 100',{exact:true}).waitFor();
+    await student.locator('.group-dialog').getByRole('button',{name:'关闭',exact:true}).click();
+    await student.locator('#nav-library').click();assert.equal(await student.locator('#group-view').isVisible(),false);
+    await teacher.locator('#logout-btn').click();await teacher.locator('#login-form').waitFor();await login(teacher,'Other');await teacher.locator('#nav-groups').click();await teacher.locator('#group-view .exam-empty').waitFor();
+    assert.deepEqual(errors,[]);
+    console.log('PASS: group create/QR/deep-link sign-in/join, bank review + atomic assignment, student exam inbox/score, late delivery, cohort results, member info/remove/restore, rotated invites, account isolation, mobile/dark/translation; no browser errors');
+  }finally{await browser.close();fixture.kill();}
+})().catch(error=>{console.error(error);console.error(logs.slice(-2600));fixture.kill();process.exitCode=1;});

@@ -1,5 +1,11 @@
 /* Training exams share the library's neutral surfaces and restrained blue accent. */
 .exam-view { max-width:1120px; margin:0 auto; font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif; color:#2b3b52; }
+/* Status updates stay visible without inserting/removing space above the page. */
+#exam-message { position:fixed; top:82px; right:24px; z-index:40; width:max-content; max-width:min(440px,calc(100vw - 32px)); box-sizing:border-box; margin:0; padding:11px 16px; color:#3657a0; background:#f2f6ff; border-color:#d8e4fc; box-shadow:0 6px 22px #243b6412; overflow-wrap:anywhere; pointer-events:none; }
+#exam-message.is-error { color:#ab5143; background:#fff4f2; border-color:#f0dbd6; }
+body.dark-theme #exam-message { color:#bdd0ff; background:#20314c; border-color:#3b5278; box-shadow:0 6px 22px #0003; }
+body.dark-theme #exam-message.is-error { color:#ffc0b4; background:#422c30; border-color:#70464a; }
+@media(max-width:640px) { #exam-message { top:70px; right:16px; font-size:12px; } }
 .exam-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:4px 0 26px; }
 .exam-heading h1 { margin:0 0 8px; font-size:25px; line-height:1.4; overflow-wrap:anywhere; }
 .exam-heading p,.exam-subtle { margin:0; color:#63738b; font-size:13px; line-height:1.8; }

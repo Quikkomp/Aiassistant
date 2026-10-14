@@ -1,0 +1,70 @@
+// Real registration/login/recovery and disposable accounts; a simulated mailbox only.
+const {spawn}=require('node:child_process'),path=require('node:path'),fs=require('node:fs'),assert=require('node:assert/strict');
+const {chromium}=require('C:/Users/10657/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'output/ui-review');fs.mkdirSync(out,{recursive:true});
+const fixture=spawn('C:/Users/10657/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe',[path.join(__dirname,'auth_fixture.py')],{cwd:root,windowsHide:true});
+let logs='';fixture.stderr.on('data',chunk=>logs+=chunk);
+const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',chunk=>{raw+=chunk;try{resolve(JSON.parse(raw.split('\n')[0]).port);}catch(_){}});fixture.on('exit',code=>reject(new Error('Fixture exited '+code+' '+logs)));setTimeout(()=>reject(new Error('Fixture timeout '+logs)),15000).unref();});
+(async()=>{
+  const base='http://127.0.0.1:'+await ready;
+  let browser;try{browser=await chromium.launch({headless:true});}catch(_){browser=await chromium.launch({headless:true,channel:'msedge'});}
+  try{
+    const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[];
+    page.on('pageerror',error=>errors.push(error.message));
+    const capture=async name=>{await page.waitForFunction(()=>document.getAnimations().every(a=>a.playState==='finished'));await page.screenshot({path:path.join(out,name),fullPage:true});};
+    const login=async(account,password)=>{await page.locator('#login-username').fill(account);await page.locator('#login-password').fill(password);await page.locator('#login-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
+    const submit=()=>page.locator('#recovery-submit').click();
+    await page.goto(base);assert.equal(await page.locator('#login-username').getAttribute('placeholder'),'输入用户名或邮箱');
+    await page.locator('#login-form .auth-link').click();await page.locator('#register-username').fill('小林_2026');
+    await page.locator('#register-email').fill('learner@qq.com');await page.locator('#register-password').fill('old-password');await page.locator('#register-confirm').fill('old-password');await page.locator('#terms-check').check();
+    await capture('auth-flexible-register-desktop.png');await page.locator('#register-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});
+    assert.equal(await page.locator('#account-name').textContent(),'小林_2026');
+    const original=(await (await context.request.get(base+'/api/private')).json()).user_id;
+    await page.locator('#logout-btn').click();await login('LEARNER@QQ.COM','old-password');
+    assert.equal((await (await context.request.get(base+'/api/private')).json()).user_id,original);
+    const oldContext=await browser.newContext();await oldContext.request.post(base+'/api/auth/login',{data:{account:'learner@qq.com',password:'old-password'}});
+    await page.locator('#logout-btn').click();await page.locator('#forgot-password-btn').click();
+    assert.equal(await page.locator('#forgot-form').isVisible(),true);assert.equal(await page.locator('#login-form').isVisible(),false);
+    await page.locator('#recovery-email').fill('learner@qq.com');await capture('auth-recovery-email-desktop.png');await submit();
+    await page.locator('#recovery-code-step').waitFor({state:'visible'});assert.equal(await page.locator('#recovery-resend').isDisabled(),true);
+    assert.equal(await page.locator('#recovery-email').getAttribute('readonly'),'');
+    const messages=(await (await context.request.get(base+'/_test/mailbox?email=learner@qq.com')).json()).messages,code=messages.at(-1).code;
+    const wrong=String((Number(code)+1)%1000000).padStart(6,'0');await page.locator('#recovery-code').fill(wrong);await submit();
+    await page.locator('#forgot-message').filter({hasText:'验证码无效'}).waitFor();assert.equal(await page.locator('#recovery-password-step').isVisible(),false);
+    await capture('auth-recovery-code-desktop.png');
+    await page.locator('#recovery-code').fill(code);await submit();await page.locator('#recovery-password-step').waitFor({state:'visible'});
+    await page.locator('#recovery-password').fill('new-password');await page.locator('#recovery-confirm').fill('mismatch-password');await submit();
+    await page.locator('#forgot-message').filter({hasText:'不一致'}).waitFor();
+    await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.waitForFunction(()=>document.getAnimations().every(a=>a.playState==='finished'));
+    assert.ok(await page.locator('.auth-recovery-steps li>span').evaluateAll(elements=>elements.every(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-r.height)<1&&r.width>=25;})),'Mobile step circles must stay square');
+    assert.ok(await page.locator('#forgot-form').evaluate(e=>e.getBoundingClientRect().bottom<=e.closest('.auth-card').getBoundingClientRect().bottom),'The whole form must fit inside its card');
+    await capture('auth-recovery-password-mobile.png');
+    await page.locator('#auth-lang-toggle-btn').click();assert.equal(await page.locator('#forgot-form h2').textContent(),'Reset password');await capture('auth-recovery-password-en-mobile.png');await page.locator('#auth-lang-toggle-btn').click();
+    await page.locator('#recovery-confirm').fill('new-password');await submit();await page.locator('#forgot-message').filter({hasText:'密码已重置'}).waitFor();
+    assert.equal(await page.locator('.bank-app').isVisible(),false);assert.equal(await page.locator('#recovery-password').inputValue(),'');
+    assert.equal((await oldContext.request.get(base+'/api/private')).status(),401);
+    await page.locator('#forgot-form [data-auth-mode=login]').click();assert.equal(await page.locator('#login-username').inputValue(),'learner@qq.com');
+    await page.locator('#login-password').fill('old-password');await page.locator('#login-form [type=submit]').click();await page.locator('#login-message').filter({hasText:'不正确'}).waitFor();
+    await login('learner@qq.com','new-password');assert.equal((await (await context.request.get(base+'/api/private')).json()).user_id,original);
+    await page.locator('#nav-groups').click();await page.locator('#group-view').getByRole('button',{name:'创建小组',exact:true}).click();
+    await page.locator('.group-dialog').getByLabel('小组名称',{exact:true}).fill('恢复账号后的小组');await page.locator('.group-dialog [type=submit]').click();await page.locator('.group-members').waitFor();
+    await page.locator('#logout-btn').click();await page.locator('#forgot-password-btn').click();
+    await context.request.post(base+'/_test/control',{data:{enabled:false}});await page.locator('#recovery-email').fill('unknown@qq.com');await submit();
+    await page.locator('#forgot-message').filter({hasText:'尚未配置'}).waitFor();assert.equal(await page.locator('#recovery-code-step').isVisible(),false);
+    await context.request.post(base+'/_test/control',{data:{enabled:true}});await page.locator('#recovery-email').fill('unknown@qq.com');await submit();await page.locator('#recovery-code-step').waitFor({state:'visible'});
+    assert.equal((await (await context.request.get(base+'/_test/mailbox?email=unknown@qq.com')).json()).messages.length,0);
+    await page.locator('#forgot-form [data-auth-mode=login]').click();
+    // Navigating away from a pending request must not resurrect the recovery form.
+    await page.locator('#login-username').fill('another@qq.com');await page.locator('#forgot-password-btn').click();
+    let release;const gate=new Promise(resolve=>release=resolve);
+    const delay=async route=>{await gate;try{await route.fulfill({status:202,contentType:'application/json',body:JSON.stringify({ok:true,request_id:'a'.repeat(32),retry_after:60})});}catch(_){}};
+    await page.route('**/api/auth/password/request',delay);await submit();
+    assert.equal(await page.locator('#recovery-email').isDisabled(),true);
+    await page.locator('#forgot-form [data-auth-mode=login]').click();release();await page.unroute('**/api/auth/password/request',delay);
+    await page.locator('#login-form').waitFor({state:'visible'});assert.equal(await page.locator('#forgot-form').isVisible(),false);
+    await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#forgot-password-btn').click();assert.equal(await page.locator('.auth-card').evaluate(e=>getComputedStyle(e).animationName),'none');
+    assert.deepEqual(errors,[]);
+    console.log('PASS: actual account DB: flexible usernames, email/username login, staged code recovery/errors, one-time password update, old-session revocation, group access, missing SMTP, account privacy, mobile/language/reduced motion and pending-request cancellation; no real mail');
+  }finally{await browser.close();fixture.kill();}
+})().catch(error=>{console.error(error);console.error(logs.slice(-1800));fixture.kill();process.exitCode=1;});

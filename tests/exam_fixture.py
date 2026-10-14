@@ -13,6 +13,8 @@ from question_bank import BankStore
 from exam_store import ExamStore
 from exam_routes import make_exam_blueprint
 from test_exams import FakeAI
+from group_store import GroupStore
+from group_routes import make_group_blueprint
 
 sys.stdout.reconfigure(encoding="utf-8")
 temporary = tempfile.TemporaryDirectory(prefix="exam-browser-")
@@ -23,6 +25,7 @@ bank_store.finish(bank_id, "Teacher", "Q1 [fill_blank]\n在标准大气压下，
 app = Flask(__name__, template_folder=str(ROOT / "local_chat_site/templates"), static_folder=str(ROOT / "local_chat_site/static"))
 app.secret_key = "isolated-browser-tests-only"
 app.register_blueprint(make_exam_blueprint(exam_store, bank_store, lambda: None, FakeAI()))
+app.register_blueprint(make_group_blueprint(GroupStore(exam_store)))
 
 
 @app.route("/")

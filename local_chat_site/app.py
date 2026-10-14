@@ -7,7 +7,6 @@ import hashlib
 from typing import List
 from flask import Flask, render_template, request, jsonify, session, send_file
 from werkzeug.utils import secure_filename
-from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 try:
@@ -17,10 +16,12 @@ except AttributeError:
     pass
 import rag_agentV3_2 as rag_agent_module  # ✅ 修改为你的文件名
 import mysql.connector
-from mysql.connector import IntegrityError as MySQLIntegrityError
 from collections import Counter
 from question_bank import BankStore
 from exam_import import ExamImportError
+from auth_store import AuthStore
+from auth_routes import make_auth_blueprint
+from mail_service import ResetService
 
 
 # ---------------- 基础配置 ----------------
@@ -140,46 +141,12 @@ def get_auth_db_conn():
     try:
         return get_db_conn(), "mysql"
     except Exception as e:
-        print(f"Auth DB fallback to SQLite: {e}")
-        conn = sqlite3.connect(AUTH_DB_PATH)
+        print(f"Auth DB fallback to SQLite: {type(e).__name__}")
+        conn = sqlite3.connect(AUTH_DB_PATH, timeout=20)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=OFF;")
-        conn.execute("PRAGMA synchronous=OFF;")
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
         return conn, "sqlite"
-
-
-def init_auth_db():
-    conn, db_kind = get_auth_db_conn()
-    cur = conn.cursor()
-    if db_kind == "sqlite":
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS app_users (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                username        TEXT NOT NULL UNIQUE,
-                email           TEXT NOT NULL UNIQUE,
-                password_hash   TEXT NOT NULL,
-                public_user_id  TEXT NOT NULL UNIQUE,
-                created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-    else:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS app_users (
-                id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-                username        VARCHAR(32) NOT NULL UNIQUE,
-                email           VARCHAR(255) NOT NULL UNIQUE,
-                password_hash   VARCHAR(255) NOT NULL,
-                public_user_id  VARCHAR(64) NOT NULL UNIQUE,
-                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        """)
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-def is_unique_violation(exc):
-    return isinstance(exc, MySQLIntegrityError) or isinstance(exc, sqlite3.IntegrityError)
 
 
 def get_profile_user():
@@ -213,9 +180,12 @@ def get_profile_user():
 app = Flask(__name__)
 bank_store = BankStore(os.path.join(BASE_DIR, "question_bank.sqlite3"))
 # 用于 Flask session（建议在服务器上用环境变量改成更安全的值）
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "dev-secret-change-me"
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
+                  SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', '').lower() in {'1', 'true'})
 init_db()
-init_auth_db()
+auth_store = AuthStore(get_auth_db_conn, app.secret_key)
+app.register_blueprint(make_auth_blueprint(auth_store, ResetService(auth_store)))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PAST_EXAM_UPLOAD_FOLDER, exist_ok=True)
@@ -243,7 +213,7 @@ def get_current_user_id() -> str:
 
 def current_auth_payload():
     username = session.get("username")
-    if not username:
+    if not username or not session.get('auth_user_id'):
         return {"authenticated": False, "username": None}
     return {"authenticated": True, "username": username}
 
@@ -254,23 +224,6 @@ def require_auth_user_id():
         return None
     return user_id
 
-
-def normalize_username(username: str) -> str:
-    return (username or "").strip().lower()
-
-
-def normalize_email(email: str) -> str:
-    return (email or "").strip().lower()
-
-
-def validate_auth_payload(username: str, email: str | None, password: str):
-    if not re.fullmatch(r"[a-zA-Z]{3,32}", username or ""):
-        return "Username must be 3-32 characters and can only contain uppercase or lowercase letters."
-    if email is not None and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email or ""):
-        return "Please enter a valid email address."
-    if len(password or "") < 6:
-        return "Password must be at least 6 characters."
-    return None
 
 def save_round_to_db(user_id: str, round_score, all_items):
     """
@@ -663,114 +616,6 @@ def profile_page():
     return render_template("profile.html", auth=current_auth_payload())
 
 
-@app.route("/api/auth/status", methods=["GET"])
-def auth_status():
-    return jsonify({"ok": True, **current_auth_payload()})
-
-
-@app.route("/api/auth/register", methods=["POST"])
-def auth_register():
-    data = request.get_json(force=True) or {}
-    username = normalize_username(data.get("username"))
-    email = normalize_email(data.get("email"))
-    password = data.get("password") or ""
-    confirm_password = data.get("confirm_password") or ""
-
-    validation_error = validate_auth_payload(username, email, password)
-    if validation_error:
-        return jsonify({"ok": False, "msg": validation_error}), 400
-    if password != confirm_password:
-        return jsonify({"ok": False, "msg": "Passwords do not match."}), 400
-
-    public_user_id = f"user_{uuid.uuid4().hex[:8]}"
-    password_hash = generate_password_hash(password)
-
-    try:
-        conn, db_kind = get_auth_db_conn()
-        cur = conn.cursor()
-        if db_kind == "sqlite":
-            cur.execute(
-                """
-                INSERT INTO app_users (username, email, password_hash, public_user_id)
-                VALUES (?, ?, ?, ?);
-                """,
-                (username, email, password_hash, public_user_id),
-            )
-        else:
-            cur.execute(
-                """
-                INSERT INTO app_users (username, email, password_hash, public_user_id)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (username, email, password_hash, public_user_id),
-            )
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        conn.rollback()
-        cur.close()
-        conn.close()
-        if is_unique_violation(e):
-            return jsonify({"ok": False, "msg": "Username or email already exists."}), 409
-        return jsonify({"ok": False, "msg": str(e)}), 500
-
-    session.clear()
-    session["auth_user_id"] = public_user_id
-    session["username"] = username
-    return jsonify({"ok": True, "username": username})
-
-
-@app.route("/api/auth/login", methods=["POST"])
-def auth_login():
-    data = request.get_json(force=True) or {}
-    username = normalize_username(data.get("username"))
-    password = data.get("password") or ""
-
-    validation_error = validate_auth_payload(username, None, password)
-    if validation_error:
-        return jsonify({"ok": False, "msg": validation_error}), 400
-
-    try:
-        conn, db_kind = get_auth_db_conn()
-        cur = conn.cursor()
-        placeholder = "?" if db_kind == "sqlite" else "%s"
-        cur.execute(
-            f"""
-            SELECT username, password_hash, public_user_id
-            FROM app_users
-            WHERE username = {placeholder};
-            """,
-            (username,),
-        )
-        user = cur.fetchone()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)}), 500
-
-    if not user or not check_password_hash(user[1], password):
-        return jsonify({"ok": False, "msg": "Invalid username or password."}), 401
-
-    session.clear()
-    session["username"] = user[0]
-    session["auth_user_id"] = user[2]
-    return jsonify({"ok": True, "username": user[0]})
-
-
-@app.route("/api/auth/guest", methods=["POST"])
-def auth_guest():
-    session.pop("username", None)
-    session.pop("auth_user_id", None)
-    session["guest_mode"] = True
-    get_current_user_id()
-    return jsonify({"ok": True, "guest": True})
-
-
-@app.route("/api/auth/logout", methods=["POST"])
-def auth_logout():
-    session.clear()
-    return jsonify({"ok": True})
 
 
 @app.route("/api/profile", methods=["GET"])
@@ -793,47 +638,6 @@ def api_profile():
     return jsonify({"ok": True, "user": user, "total_rounds": total_rounds})
 
 
-@app.route("/api/profile/change_password", methods=["POST"])
-def api_change_password():
-    user_id = require_auth_user_id()
-    if not user_id:
-        return jsonify({"ok": False, "msg": "Please sign in first."}), 401
-
-    data = request.get_json(force=True) or {}
-    current_password = data.get("current_password") or ""
-    new_password = data.get("new_password") or ""
-    confirm_password = data.get("confirm_password") or ""
-
-    if len(new_password) < 6:
-        return jsonify({"ok": False, "msg": "New password must be at least 6 characters."}), 400
-    if new_password != confirm_password:
-        return jsonify({"ok": False, "msg": "New passwords do not match."}), 400
-
-    try:
-        conn, db_kind = get_auth_db_conn()
-        cur = conn.cursor()
-        placeholder = "?" if db_kind == "sqlite" else "%s"
-        cur.execute(
-            f"SELECT password_hash FROM app_users WHERE public_user_id = {placeholder};",
-            (user_id,),
-        )
-        row = cur.fetchone()
-        if not row or not check_password_hash(row[0], current_password):
-            cur.close()
-            conn.close()
-            return jsonify({"ok": False, "msg": "Current password is incorrect."}), 401
-
-        new_hash = generate_password_hash(new_password)
-        cur.execute(
-            f"UPDATE app_users SET password_hash = {placeholder} WHERE public_user_id = {placeholder};",
-            (new_hash, user_id),
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)}), 500
 
 
 @app.route("/api/profile/rounds", methods=["GET"])
@@ -1604,11 +1408,15 @@ def kb_status():
 
 from exam_routes import make_exam_blueprint
 from exam_store import ExamStore
+from group_store import GroupStore
+from group_routes import make_group_blueprint
 
+exam_store = ExamStore(os.path.join(BASE_DIR, "exams.sqlite3"))
 app.register_blueprint(make_exam_blueprint(
-    ExamStore(os.path.join(BASE_DIR, "exams.sqlite3")),
+    exam_store,
     bank_store, get_rag_agent_for_current_user,
 ))
+app.register_blueprint(make_group_blueprint(GroupStore(exam_store)))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)

@@ -399,15 +399,16 @@ function applyAuthI18n() {
     const loginBadge = loginForm.querySelector(".auth-badge");
     if (loginBadge) loginBadge.remove();
     loginForm.querySelector("h2").innerText = zh ? "登录 Exercise Generator" : "Sign in to Exercise Generator";
-    loginForm.querySelector("p").innerText = zh ? "使用用户名和密码进入你的练习空间" : "Use your username and password to access your exercise workspace";
-    loginForm.querySelector("label").childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
-    document.getElementById("login-username").placeholder = zh ? "输入用户名" : "Enter your username";
+    loginForm.querySelector("p").innerText = zh ? "使用用户名或注册邮箱与密码进入你的练习空间" : "Sign in with your username or registered email and password";
+    loginForm.querySelector("label").childNodes[0].textContent = zh ? "用户名或邮箱\n              " : "Username or email\n              ";
+    document.getElementById("login-username").placeholder = zh ? "输入用户名或邮箱" : "Enter username or email";
     const usernameHint = loginForm.querySelector("#login-username + span");
     if (usernameHint) usernameHint.remove();
     loginForm.querySelectorAll("label")[1].childNodes[0].textContent = zh ? "密码\n              " : "Password\n              ";
     document.getElementById("login-password").placeholder = zh ? "输入密码" : "Enter your password";
     loginForm.querySelector(".auth-check span").innerText = zh ? "记住我" : "Remember me";
     loginForm.querySelector(".auth-link").innerText = zh ? "创建账户" : "Create account";
+    document.getElementById("forgot-password-btn").textContent = zh ? "忘记密码？" : "Forgot password?";
     loginForm.querySelector(".auth-primary").innerText = zh ? "登录" : "Sign In";
     loginForm.querySelector(".auth-guest").innerText = zh ? "以访客身份继续" : "Continue as Guest";
     loginForm.querySelector(".auth-switch").childNodes[0].textContent = zh ? "还没有账户？ " : "Don't have an account? ";
@@ -421,13 +422,13 @@ function applyAuthI18n() {
     registerForm.querySelector("p").innerText = zh ? "填写表单，创建你的个人练习空间" : "Complete the form below to create your personal exercise workspace";
     const labels = registerForm.querySelectorAll("label");
     labels[0].childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
-    document.getElementById("register-username").placeholder = zh ? "创建用户名" : "Create a username";
-    registerForm.querySelector("#register-username + span").innerText = zh ? "选择一个用于登录的唯一用户名。" : "Choose a unique username for signing in.";
+    document.getElementById("register-username").placeholder = zh ? "例如：小林_2026 或 student.01" : "e.g. student_2026 or student.01";
+    registerForm.querySelector("#register-username + span").innerText = zh ? "3–32 个字符，支持中文、英文、数字及 _、-、.；首尾须为中文、字母或数字。" : "3–32 characters: Chinese, letters, numbers, _, - and .; start and end with a letter or number.";
     labels[1].childNodes[0].textContent = zh ? "邮箱地址\n              " : "Email address\n              ";
     document.getElementById("register-email").placeholder = zh ? "输入邮箱" : "Enter your email";
     registerForm.querySelector("#register-email + span").innerText = zh ? "使用一个你可以访问的邮箱地址。" : "Use an email address you can access.";
     labels[2].childNodes[0].textContent = zh ? "密码\n                " : "Password\n                ";
-    document.getElementById("register-password").placeholder = zh ? "创建密码" : "Create a password";
+    document.getElementById("register-password").placeholder = zh ? "创建密码（8–128 位）" : "Create password (8–128 characters)";
     labels[3].childNodes[0].textContent = zh ? "确认密码\n                " : "Confirm password\n                ";
     document.getElementById("register-confirm").placeholder = zh ? "再次输入密码" : "Re-enter password";
     registerForm.querySelector(".terms span").innerText = zh ? "我同意平台条款和隐私说明。" : "I agree to the platform terms and privacy notice.";
@@ -435,6 +436,7 @@ function applyAuthI18n() {
     registerForm.querySelector(".auth-switch").childNodes[0].textContent = zh ? "已经有账户？ " : "Already have an account? ";
     registerForm.querySelector(".auth-switch button").innerText = zh ? "登录" : "Sign in";
   }
+  window.recoveryUI?.translate();
 }
 
 function applyStaticI18n() {
@@ -598,6 +600,7 @@ function setLanguage(lang) {
   setTheme(document.body.classList.contains("dark-theme") ? "dark" : "light");
   window.bankUI?.translate();
   window.examUI?.translate();
+  window.groupUI?.translate();
 }
 
 // ===== Workspace comfort controls (theme, mobile resources, live progress) =====
@@ -3437,10 +3440,15 @@ function setAuthMode(mode) {
   const loginForm = document.getElementById("login-form");
   const registerForm = document.getElementById("register-form");
   const isRegister = mode === "register";
+  const isRecovery = mode === "forgot";
 
   document.body.classList.toggle("auth-register", isRegister);
-  if (loginForm) loginForm.classList.toggle("hidden", isRegister);
+  document.body.classList.toggle("auth-recovery", isRecovery);
+  if (loginForm) loginForm.classList.toggle("hidden", isRegister || isRecovery);
   if (registerForm) registerForm.classList.toggle("hidden", !isRegister);
+  document.getElementById("forgot-form")?.classList.toggle("hidden", !isRecovery);
+  if(isRecovery) window.recoveryUI?.open();
+  else window.recoveryUI?.reset();
 
   const loginMsg = document.getElementById("login-message");
   const registerMsg = document.getElementById("register-message");
@@ -3455,7 +3463,8 @@ function showApp(username) {
   const accountName = document.getElementById("account-name");
   const guestLoginBtn = document.getElementById("guest-login-btn");
 
-  document.body.classList.remove("auth-open", "auth-register");
+  document.body.classList.remove("auth-open", "auth-register", "auth-recovery");
+  window.recoveryUI?.reset();
   if (authScreen) authScreen.classList.add("hidden");
   if (page) page.classList.remove("app-hidden");
   if (accountChip) accountChip.classList.toggle("hidden", !username);
@@ -3464,6 +3473,7 @@ function showApp(username) {
   updateAccountAvatar(username);
   window.bankUI?.reset();
   window.examUI?.resumeLink();
+  window.groupUI?.resumeLink();
   refreshKbStats();
   loadPastExamDb();
 }
@@ -3476,6 +3486,7 @@ function showAuth() {
 
   document.body.classList.add("auth-open");
   window.examUI?.reset();
+  window.groupUI?.reset();
   if (authScreen) authScreen.classList.remove("hidden");
   if (page) page.classList.add("app-hidden");
   if (accountChip) accountChip.classList.add("hidden");
@@ -3491,7 +3502,7 @@ async function postAuth(url, body = {}) {
   });
   const data = await res.json();
   if (!data.ok) {
-    throw new Error(data.msg || "Authentication failed.");
+    throw new Error(window.recoveryUI?.errorText(data.code, data.msg) || data.msg || "Authentication failed.");
   }
   return data;
 }

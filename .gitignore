@@ -5,7 +5,7 @@ __pycache__/
 *.pyc.*
 
 local_chat_site/.env
-local_chat_site/app_users.sqlite3
+local_chat_site/app_users.sqlite3*
 local_chat_site/question_bank.sqlite3*
 local_chat_site/exams.sqlite3*
 tmp/exam-test-deps/

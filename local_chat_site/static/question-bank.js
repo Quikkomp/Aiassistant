@@ -123,6 +123,7 @@
     } catch (err) { if (epoch === resetEpoch) say(err.message, true, "bank-page-message"); }
   }
   function showLibrary() {
+    window.groupUI?.leave();
     window.examUI?.leave();
     scheduleSave(true);
     $("bank-library-view").hidden = false;
@@ -138,6 +139,7 @@
     document.querySelectorAll(".material-checkbox").forEach(cb => { cb.checked = selected.includes(cb.value); });
   }
   async function openBank(bank) {
+    window.groupUI?.leave();
     window.examUI?.leave();
     scheduleSave(true);
     try { await saveChain; } catch (_) {
@@ -265,6 +267,7 @@
       tile?.classList.add("just-created"); tile?.querySelector("button")?.focus();
     },
     reset() {
+      window.groupUI?.reset();
       window.examUI?.reset();
       resetEpoch += 1; clearTimeout(timer); activeBank = null; banks = [];
       this.setBusy(false);

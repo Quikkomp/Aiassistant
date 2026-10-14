@@ -71,6 +71,25 @@ class ExamStore:
                     id INTEGER PRIMARY KEY AUTOINCREMENT, attempt_id TEXT NOT NULL,
                     idx INTEGER NOT NULL, kind TEXT NOT NULL, message TEXT NOT NULL, response TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS study_groups (
+                    id TEXT PRIMARY KEY, owner TEXT NOT NULL, owner_name TEXT NOT NULL,
+                    name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+                    token TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS group_members (
+                    group_id TEXT NOT NULL, user_id TEXT NOT NULL, username TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active', joined_at TEXT NOT NULL,
+                    PRIMARY KEY(group_id,user_id)
+                );
+                CREATE TABLE IF NOT EXISTS group_exams (
+                    group_id TEXT NOT NULL, exam_id TEXT NOT NULL, published_at TEXT NOT NULL,
+                    PRIMARY KEY(group_id,exam_id)
+                );
+                CREATE TABLE IF NOT EXISTS exam_assignments (
+                    group_id TEXT NOT NULL, exam_id TEXT NOT NULL, user_id TEXT NOT NULL,
+                    assigned_at TEXT NOT NULL, PRIMARY KEY(group_id,exam_id,user_id)
+                );
+                CREATE INDEX IF NOT EXISTS assignments_user ON exam_assignments(user_id,assigned_at);
             """)
 
     @contextmanager
@@ -158,6 +177,13 @@ class ExamStore:
             attempts = db.execute("SELECT id,exam_id,status FROM exam_attempts WHERE exam_id IN (SELECT id FROM exams WHERE owner=? ORDER BY created_at DESC LIMIT 200)", (user,)).fetchall()
             answers = db.execute("SELECT s.attempt_id,s.idx,s.ratio FROM exam_answers s JOIN exam_attempts a ON a.id=s.attempt_id WHERE s.status='graded' AND a.exam_id IN (SELECT id FROM exams WHERE owner=? ORDER BY created_at DESC LIMIT 200)", (user,)).fetchall()
             joined = db.execute("SELECT a.id,a.status,e.title,e.token,e.owner_name FROM exam_attempts a JOIN exams e ON a.exam_id=e.id WHERE a.user_id=? ORDER BY a.started_at DESC LIMIT 200", (user,)).fetchall()
+            assigned = db.execute("""SELECT e.id,e.title,e.token,e.owner_name,e.status AS exam_status,
+                g.name AS group_name,x.assigned_at FROM exam_assignments x
+                JOIN exams e ON e.id=x.exam_id JOIN study_groups g ON g.id=x.group_id
+                JOIN group_members m ON m.group_id=x.group_id AND m.user_id=x.user_id AND m.status='active'
+                WHERE x.user_id=? AND NOT EXISTS (
+                    SELECT 1 FROM exam_attempts a WHERE a.exam_id=x.exam_id AND a.user_id=x.user_id
+                ) ORDER BY x.assigned_at DESC""", (user,)).fetchall()
         by_exam, by_attempt = defaultdict(list), defaultdict(list)
         for attempt in attempts:
             by_exam[attempt["exam_id"]].append(attempt)
@@ -171,7 +197,13 @@ class ExamStore:
             exam.update(question_count=len(questions), started=len(participants), completed=len(scores),
                         graded_count=sum(len(by_attempt[p["id"]]) for p in participants),
                         average=round(sum(scores) / len(scores), 1) if scores else None)
-        return {"owned": owned, "joined": [dict(r) for r in joined]}
+        pending = {}
+        for row in assigned:
+            if row['id'] not in pending:
+                pending[row['id']] = {**dict(row), 'status': 'assigned', 'group_names': []}
+            if row['group_name'] not in pending[row['id']]['group_names']:
+                pending[row['id']]['group_names'].append(row['group_name'])
+        return {"owned": owned, "joined": list(pending.values()) + [dict(r) for r in joined]}
 
     def shared(self, token):
         with self.connect() as db:
@@ -298,13 +330,18 @@ class ExamStore:
             rows = db.execute("SELECT kind,message,response FROM exam_support WHERE attempt_id=? AND idx=? ORDER BY id DESC LIMIT 6", (attempt_id, idx)).fetchall()
         return [dict(r) for r in reversed(rows)]
 
-    def analytics(self, exam_id, user):
+    def analytics(self, exam_id, user, user_ids=None):
         from collections import defaultdict
         from statistics import median
         exam = self.owned(exam_id, user)
         with self.connect() as db:
-            attempts = [dict(r) for r in db.execute("SELECT id,username,status,started_at,completed_at FROM exam_attempts WHERE exam_id=? ORDER BY started_at DESC", (exam_id,))]
+            attempts = [dict(r) for r in db.execute("SELECT id,user_id,username,status,started_at,completed_at FROM exam_attempts WHERE exam_id=? ORDER BY started_at DESC", (exam_id,))]
             answers = [dict(r) for r in db.execute("SELECT s.attempt_id,s.idx,s.ratio FROM exam_answers s JOIN exam_attempts a ON s.attempt_id=a.id WHERE a.exam_id=? AND s.status='graded'", (exam_id,))]
+        if user_ids is not None:
+            allowed = set(user_ids)
+            attempts = [a for a in attempts if a['user_id'] in allowed]
+            attempt_ids = {a['id'] for a in attempts}
+            answers = [a for a in answers if a['attempt_id'] in attempt_ids]
         by_attempt = defaultdict(list)
         for answer in answers:
             by_attempt[answer["attempt_id"]].append(answer)

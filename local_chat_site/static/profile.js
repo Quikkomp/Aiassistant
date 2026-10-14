@@ -12,7 +12,7 @@ const words = {
   username:["用户名","Username"], email:["电子邮箱","Email"], userId:["用户 ID","User ID"], rounds:["完成练习轮次","Completed practice rounds"],
   changePassword:["修改密码","Change password"], review:["回顾学习记录","Review your learning"], reviewHint:["查看历次作答、批改结果与学习反馈。","Review your answers, grading results and learning feedback."],
   completed:["已完成的练习","Completed practice"], retry:["重新加载","Retry"], backHistory:["返回记录","Back to history"],
-  passwordHint:["新密码至少 6 个字符，建议使用不重复的字母、数字与符号组合。","Use at least 6 characters. A unique mix of letters, numbers and symbols is recommended."],
+  passwordHint:["新密码应为 8–128 个字符，建议使用不重复的字母、数字与符号组合。","Use 8–128 characters. A unique mix of letters, numbers and symbols is recommended."],
   currentPassword:["当前密码","Current password"], newPassword:["新密码","New password"], confirmPassword:["确认新密码","Confirm new password"],
   savePassword:["更新密码","Update password"], clear:["清空","Clear"], saved:["密码修改成功。","Password updated successfully."],
   infoSubtitle:["查看账号信息，回顾你的学习历程。","Your account information and learning journey."],
