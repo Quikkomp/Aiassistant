@@ -73,7 +73,8 @@ os.makedirs(VECTOR_STORE_DIR, exist_ok=True)
 # 0️⃣ 环境变量加载
 # -------------------
 print("🔧 正在加载环境变量...")
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 TESSERACT_AVAILABLE = configure_tesseract()
 

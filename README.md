@@ -16,17 +16,15 @@ A Flask-based local RAG study assistant. It lets users upload course materials, 
 
 ```text
 local_chat_site/
-  local_chat_site/
-    app.py
-    document_loader.py
-    rag_agentV3_2.py
-    static/
-    templates/
-  requirements.txt
-  .env.example
+  app.py
+  document_loader.py
+  rag_agentV3_2.py
+  static/
+  templates/
+requirements.txt
 ```
 
-Runtime folders such as `materials`, `vector_store`, `student_logs`, `literature_cache`, and `exam_db` are intentionally ignored by Git because they may contain private uploads, generated indexes, logs, or cached data.
+Runtime folders such as `materials`, `vector_store`, `student_logs`, `literature_cache`, and `exam_db` are intentionally ignored by Git because they may contain private uploads, generated indexes, logs, or cached data. The application source lives directly under `local_chat_site/`; a nested `local_chat_site/local_chat_site/` directory is a local duplicate/old copy and should not be used as the app entry point.
 
 ## Setup
 
@@ -58,7 +56,7 @@ cd local_chat_site
 python app.py
 ```
 
-Open the Flask URL printed in the terminal, usually `http://127.0.0.1:5000`.
+Open the Flask URL printed in the terminal, usually `http://127.0.0.1:8000`.
 
 ## MySQL Setup
 

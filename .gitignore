@@ -1,10 +1,14 @@
 .env
 *.env
+.idea/
 __pycache__/
 *.py[cod]
 *.pyc.*
+main.py
 
 local_chat_site/.env
+local_chat_site/requirements.txt
+local_chat_site/local_chat_site/
 local_chat_site/app_users.sqlite3
 local_chat_site/materials/
 local_chat_site/vector_store/
