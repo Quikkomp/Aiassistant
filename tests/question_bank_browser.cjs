@@ -38,6 +38,10 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/kb_status') return send({ ok: true, ready: files.length > 0, files, total_files: files.length });
   if (url.pathname === '/api/past_exam/list') return send({ ok: true, questions: [{ id: 1, source_file: '示例试卷.pdf', question_type: 'short_answer', question: 'Explain a concept.' }] });
   if (url.pathname === '/api/upload') { files = ['课程资料.txt']; return send({ ok: true, saved: files, total_files: 1 }); }
+  if (url.pathname === '/api/material/import_url') {
+    if(data.url.includes('invalid')) {res.statusCode=400;return send({ok:false,msg:'链接无法读取'});}
+    files.push('url_course.txt'); return send({ok:true,saved:['url_course.txt'],total_files:files.length});
+  }
   if (url.pathname === '/api/chat') {
     generatedRequest = data;
     if(pauseGeneration)await new Promise(resolve=>{releaseGeneration=resolve;generationStarted?.();});
@@ -70,6 +74,9 @@ const server = http.createServer(async (req, res) => {
     await page.goto(base);
     await page.locator('#create-bank-btn').waitFor();
     assert.equal(await page.locator('#bank-library-view').isVisible(), true);
+    assert.equal(await page.locator('.bank-navigation .bank-nav-icon').count(),4);
+    assert.ok(await page.locator('.bank-navigation .bank-nav-icon').evaluateAll(icons=>icons.every(icon=>icon.tagName.toLowerCase()==='svg'&&icon.getAttribute('aria-hidden')==='true'&&icon.getAttribute('focusable')==='false'&&getComputedStyle(icon).width==='22px'&&getComputedStyle(icon).height==='22px')));
+    assert.equal(await page.locator('#nav-library .bank-nav-icon').evaluate(icon=>getComputedStyle(icon).color),'rgb(65, 109, 245)');
     assert.equal(await page.locator('.bank-navigation a[href="/profile"]').count(), 0);
     assert.equal(await page.locator('.bank-sidebar-bottom a[href="/profile"]').isVisible(), true);
     assert.ok(await page.locator('.bank-profile-link').evaluate(el=>el.getBoundingClientRect().top > innerHeight * .7));
@@ -77,7 +84,25 @@ const server = http.createServer(async (req, res) => {
     await page.locator('#create-bank-btn').click();
     assert.equal(await page.locator('#create-bank-dialog').isVisible(), true);
     assert.equal(await page.locator('#creator-details').getAttribute('open'), null);
-    assert.equal(await page.locator('.creator-composer > .creator-suggestions [data-prompt-example]').count(), 3);
+    assert.equal(await page.locator('.creator-composer > .creator-suggestions [data-prompt-example]').count(), 4);
+    assert.deepEqual(await page.locator('.bank-navigation button').evaluateAll(nodes=>nodes.map(n=>n.id)), ['nav-library','nav-practice','nav-exams','nav-groups']);
+    assert.ok(await page.locator('.bank-sidebar-bottom > p').evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap'&&e.scrollWidth<=e.clientWidth));
+    assert.ok(await page.locator('#creator-details').evaluate(e=>e.compareDocumentPosition(document.querySelector('.creator-resources'))&Node.DOCUMENT_POSITION_FOLLOWING));
+    assert.equal(await page.locator('#import-url-btn [data-bank-i18n]').innerText(),'上传 URL');
+    const buttonsInline=()=>page.evaluate(()=>{const a=document.querySelector('#import-materials-btn').getBoundingClientRect(),b=document.querySelector('#import-url-btn').getBoundingClientRect();return Math.abs(a.top-b.top)<2&&b.left>=a.right;});
+    assert.ok(await buttonsInline());
+    await page.locator('[data-prompt-example="choice"]').click();assert.ok((await page.locator('#user-input').inputValue()).includes('单项选择题'));
+    await page.locator('#import-url-btn').click();await page.locator('#creator-url-input').fill('https://example.com/invalid');await page.locator('#creator-url-submit').click();
+    await page.locator('#creator-message').filter({hasText:'链接无法读取'}).waitFor();assert.equal(await page.locator('#creator-url-submit').isDisabled(),false);
+    let releaseUrl, markUrl;const urlGate=new Promise(resolve=>releaseUrl=resolve),urlStarted=new Promise(resolve=>markUrl=resolve);
+    const waitUrl=async route=>{markUrl();await urlGate;await route.continue();};await page.route('**/api/material/import_url',waitUrl);
+    await page.locator('#creator-url-input').fill('https://example.com/course');await page.locator('#creator-url-submit').click();await urlStarted;
+    assert.equal(await page.locator('#close-creator-btn').isDisabled(),true);assert.equal(await page.locator('#send-btn').isDisabled(),true);
+    await page.keyboard.press('Escape');assert.equal(await page.locator('#create-bank-dialog').isVisible(),true);
+    releaseUrl();
+    await page.locator('#creator-message').filter({hasText:'自动选中'}).waitFor();assert.equal(await page.locator('.material-checkbox[value="url_course.txt"]').isChecked(),true);
+    await page.unroute('**/api/material/import_url',waitUrl);
+    assert.equal(await page.locator('#creator-url-panel').isVisible(),false);
     assert.equal(await page.locator('.creator-composer-footer [data-prompt-example]').count(), 0);
     const promptStyles = await page.locator('[data-prompt-example]').evaluateAll(buttons => buttons.map(el => {
       const s = getComputedStyle(el);
@@ -135,7 +160,8 @@ const server = http.createServer(async (req, res) => {
     await page.screenshot({ path: path.join(out, 'library-saved-desktop.png'), fullPage: true });
     await page.locator('.bank-open-btn').click();
     await page.locator('.feedback-tools > summary').click();
-    assert.equal(await page.locator('.feedback-response-group button:disabled').count(), 2);
+    assert.equal(await page.locator('.feedback-response-group').count(), 0);
+    assert.equal(await page.locator('.feedback-learning-group .explain-btn').isDisabled(),true);
     assert.equal(await page.locator('.feedback-learning-group button:disabled').count(), 2);
     assert.equal(await page.locator('.feedback-action-hint').isVisible(), true);
     await page.locator('.feedback-tools > summary').click();
@@ -143,7 +169,7 @@ const server = http.createServer(async (req, res) => {
     await page.waitForFunction(() => document.querySelector('#bank-save-status').textContent === '已保存');
     await page.locator('.submit-btn').click();
     await page.locator('.grade-result').getByText('Result: Correct').waitFor();
-    assert.equal(await page.locator('.feedback-response-group button:disabled').count(), 0);
+    assert.equal(await page.locator('.feedback-learning-group .explain-btn').isDisabled(),false);
     assert.equal(await page.locator('.feedback-action-hint').isVisible(), false);
     await page.locator('#exam-next-btn').click();
     await page.locator('.question-choice-btn').first().click();
@@ -175,10 +201,9 @@ const server = http.createServer(async (req, res) => {
     await page.waitForFunction(() => Array.from(document.querySelectorAll('.feedback-action-buttons button')).every(el => el.getAnimations().every(animation => animation.playState === 'finished')));
     const actionStyles = await page.locator('.feedback-action-buttons button').evaluateAll(buttons => buttons.map(el => ({ height: el.getBoundingClientRect().height, background: getComputedStyle(el).backgroundColor })));
     assert.ok(actionStyles.every(s => s.height === 40));
-    assert.equal(actionStyles[0].background, 'rgb(237, 247, 241)');
-    assert.equal(actionStyles[1].background, 'rgb(255, 245, 233)');
-    assert.equal(actionStyles[4].background, 'rgb(237, 243, 255)');
-    await page.locator('.ask-ai-btn').click();
+    assert.equal(actionStyles.length,3);
+    assert.equal(actionStyles[2].background, 'rgb(237, 243, 255)');
+    await page.locator('.feedback-tools .ask-ai-btn').click();
     assert.equal(await page.locator('#question-qa-panel').isVisible(), true);
     await page.locator('#scenario-entry-btn').click();
     assert.equal(await page.locator('#scenario-modal').isVisible(), true);
@@ -187,10 +212,10 @@ const server = http.createServer(async (req, res) => {
     await page.waitForFunction(() => Array.from(document.querySelectorAll('.feedback-action-buttons button')).every(el => el.getAnimations().every(animation => animation.playState === 'finished')));
     await page.screenshot({ path: path.join(out, 'feedback-actions-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
-    assert.ok(await page.locator('.understand-row').evaluate(el => el.children[1].getBoundingClientRect().top > el.children[0].getBoundingClientRect().bottom));
+    assert.equal(await page.locator('.feedback-tools .understand-btn, .feedback-tools .dont-understand-btn').count(),0);
     await page.screenshot({ path: path.join(out, 'feedback-actions-mobile.png'), fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    await page.locator('.feedback-tools .understand-btn').click();
+    await page.locator('#exam-next-btn').click();
     assert.equal(await page.locator('.question-choice-btn').count(), 4);
     await page.locator('#exam-prev-btn').click();
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -202,6 +227,9 @@ const server = http.createServer(async (req, res) => {
     await page.locator('#create-bank-btn').click();
     await page.waitForFunction(() => Array.from(document.querySelectorAll('[data-prompt-example]')).every(el => getComputedStyle(el).opacity === '1'));
     await page.screenshot({ path: path.join(out, 'creator-mobile.png'), fullPage: true });
+    assert.ok(await buttonsInline(),'Document and URL buttons stay on the same row on mobile');
+    await page.locator('#import-url-btn').click();await page.screenshot({path:path.join(out,'creator-url-mobile.png'),fullPage:true});
+    assert.equal(await page.locator('#creator-url-panel').isVisible(),true);await page.locator('#import-url-btn').click();
     await page.locator('[data-prompt-example="challenge"]').click();
     assert.equal((await page.locator('#user-input').inputValue()).includes('5 道高难度简答题'), true);
     assert.equal(await page.evaluate(() => document.querySelector('#create-bank-dialog').scrollWidth <= document.querySelector('#create-bank-dialog').clientWidth), true);
@@ -234,6 +262,9 @@ const server = http.createServer(async (req, res) => {
     assert.equal(await page.locator('#bank-capacity-help').evaluate(el => getComputedStyle(el).visibility), 'visible');
     await page.setViewportSize({ width: 1440, height: 1000 });
     const original = banks[0];
+    await page.setViewportSize({width:900,height:900});
+    assert.ok(await page.locator('.bank-sidebar-bottom > p').evaluate(e=>e.scrollWidth<=e.clientWidth),'Credit fits the tablet sidebar without wrapping');
+    await page.setViewportSize({width:1440,height:1000});
     banks = Array.from({ length: 9 }, (_, i) => ({ ...original, id: `capacity-${i}`, title: `练习 ${i + 1}`, progress: {}, version: 0 }));
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#bank-capacity').textContent.includes('9 / 10'));

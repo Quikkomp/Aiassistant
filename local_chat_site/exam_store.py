@@ -325,6 +325,17 @@ class ExamStore:
                 row["score"] = round(sum(a["ratio"] * exam["questions"][a["idx"]]["points"] for a in answers), 2) if row["status"] == "completed" else None
         return rows
 
+    def review(self, exam_id, user, attempt_id):
+        exam = self.owned(exam_id, user)
+        with self.connect() as db:
+            row = db.execute('SELECT user_id,username,status,started_at,completed_at FROM exam_attempts WHERE id=? AND exam_id=?', (attempt_id, exam_id)).fetchone()
+        if row is None:
+            raise ExamError('答卷不存在或不属于这场考试。', 404)
+        packet = self.packet(attempt_id, row['user_id'])
+        for question, reference in zip(packet['questions'], exam['questions']):
+            question.update({key: reference[key] for key in ('answer', 'explanation', 'rubric', 'knowledge')})
+        return {**packet, 'username': row['username'], 'started_at': row['started_at'], 'completed_at': row['completed_at']}
+
     def support_history(self, attempt_id, idx):
         with self.connect() as db:
             rows = db.execute("SELECT kind,message,response FROM exam_support WHERE attempt_id=? AND idx=? ORDER BY id DESC LIMIT 6", (attempt_id, idx)).fetchall()

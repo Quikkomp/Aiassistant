@@ -6,6 +6,7 @@
   const n=(tag,value='',attrs={})=>{const e=document.createElement(tag);e.textContent=value;for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));return e;};
   let epoch=0,operation=0,busy=false,groups=[],current=null,tab='members',kind='list',preview=null,inviteToken='',dialog=null,lastKey='',results=null,resultExam='';
   const logged=()=>!$('account-chip').classList.contains('hidden')&&!!$('account-name').textContent.trim();
+  const teacher=()=>window.roleUI?.isTeacher()===true;
   function message(value='',error=false){
     const el=dialog?.open?dialog.querySelector('.group-dialog-message'):$('group-message');
     if(!el)return;el.textContent=value;el.hidden=!value;el.classList.toggle('is-error',error);
@@ -61,7 +62,8 @@
       metrics.append(n('strong',String(g.member_count)),n('span',tr('位组员','members')),n('strong',String(g.exam_count)),n('span',tr('场考试','exams')));
       row.append(identity,metrics,btn(tr('进入小组 →','Open group →'),()=>open(g.id)));list.append(row);
     }
-    content(heading(t('groups'),tr('把资料、练习和反馈，连接成一个共同学习的空间。','A shared space for assignments, learning and feedback.'),[btn(t('join'),joinDialog),btn(t('create'),()=>editDialog(),true)]),groups.length?list:n('div',tr('还没有小组。创建一个学习小组，或通过老师的邀请链接加入。','Create a learning group, or join through a teacher’s invitation.'),{class:'exam-empty'}));
+    const actions=[btn(t('join'),joinDialog)];if(teacher())actions.push(btn(t('create'),()=>editDialog(),true));
+    content(heading(t('groups'),tr('把资料、练习和反馈，连接成一个共同学习的空间。','A shared space for assignments, learning and feedback.'),actions),groups.length?list:n('div',teacher()?tr('还没有小组。创建一个学习小组，或通过老师的邀请链接加入。','Create a learning group, or join through a teacher’s invitation.'):tr('还没有加入班级。通过老师的链接或二维码加入学习小组。','Join a class with your teacher’s invitation link or QR code.'),{class:'exam-empty'}));
   }
   async function open(id,notice=''){
     if($('group-view').hidden)enter();
@@ -178,7 +180,7 @@
     const count=current.exams.find(e=>e.id===resultExam)?.question_count||0;
     for(const student of results.students){
       const row=n('tr'),values=[student.username+(student.member_status==='removed'?' · '+t('removed'):''),state(student.status),`${student.done} / ${count}`,student.score===null?'—':String(Number((student.score/results.total*100).toFixed(1))),date(student.completed_at)];
-      values.forEach((value,i)=>row.append(n('td',value,{'data-label':labels[i],...(i===3?{class:'exam-roster-score'}:{})})));body.append(row);
+      values.forEach((value,i)=>{const cell=n('td','',{'data-label':labels[i],...(i===3?{class:'exam-roster-score'}:{})});if(i===0&&student.attempt_id){const groupId=current.id;cell.append(btn(value,()=>window.examUI.review(resultExam,student.attempt_id,()=>window.groupUI.open(groupId))));}else cell.textContent=value;row.append(cell);});body.append(row);
     }table.append(head,body);scroll.append(table);roster.append(scroll);section.append(roster);return section;
   }
   function leave(){epoch++;operation++;busy=false;$('group-view').hidden=true;$('nav-groups').classList.remove('active');$('nav-groups').removeAttribute('aria-current');$('group-message').hidden=true;dialog?.close();}

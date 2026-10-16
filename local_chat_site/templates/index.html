@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Local Model Knowledge Base Assistant</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=bank-20261009" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=bank-20261010-loading" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}?v=auth-20261014-recovery" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=nav-icons-20261016" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}?v=roles-20261016-mascots-5" />
   <link rel="stylesheet" href="{{ url_for('static', filename='exams.css') }}?v=exams-20261014-scroll" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='groups.css') }}?v=groups-20261014" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='groups.css') }}?v=roles-20261016-interactive" />
 </head>
-<body class="{% if not auth.authenticated %}auth-open{% endif %}">
+<body class="{% if not auth.authenticated %}auth-open{% endif %}" data-account-role="{{ auth.role|default('teacher', true) if auth.authenticated else 'guest' }}">
   <section id="auth-screen" class="auth-screen {% if auth.authenticated %}hidden{% endif %}" aria-label="Account access">
     <header class="auth-topbar">
       <div class="logo">
@@ -19,9 +19,47 @@
       </div>
       <button id="auth-lang-toggle-btn" class="small-btn auth-lang-toggle-btn" type="button">EN</button>
     </header>
-    <div class="auth-shell">
+    <div id="auth-role-backdrop" class="auth-role-backdrop" aria-hidden="true"></div>
+    <section id="auth-role-choice" class="auth-role-choice" aria-labelledby="auth-role-title">
+      <div class="auth-role-heading"><h1 id="auth-role-title" data-role-i18n="welcome">欢迎来到 MetaThink AI</h1><p data-role-i18n="intro">选择你的身份，进入属于你的学习与教学空间。</p></div>
+      <div class="auth-role-cards">
+        <article class="auth-role-card teacher">
+          <img class="auth-role-mascot teacher-mascot" src="{{ url_for('static', filename='role-teacher-anime-v1.png') }}" width="164" height="164" alt="" aria-hidden="true" decoding="async" draggable="false" />
+          <span class="auth-role-icon" aria-hidden="true">▤</span><span class="auth-role-kicker">TEACHER</span>
+          <h2 data-role-i18n="teacher">我是老师</h2><p data-role-i18n="teacherIntro">从课程资料到课堂考试，轻松了解每一位学生的进步。</p>
+          <div class="auth-role-journey">
+            <span class="auth-journey-caption" data-role-i18n="teacherJourney">让教学有迹可循</span>
+            <ol class="auth-journey-steps">
+              <li><span class="auth-journey-node" aria-hidden="true">01</span><span data-role-i18n="teacherStep1">创建试题</span></li>
+              <li><span class="auth-journey-node" aria-hidden="true">02</span><span data-role-i18n="teacherStep2">审核发布</span></li>
+              <li><span class="auth-journey-node" aria-hidden="true">03</span><span data-role-i18n="teacherStep3">洞察学情</span></li>
+            </ol>
+          </div>
+          <ul><li data-role-i18n="teacherFirst">创建并分享考试</li><li data-role-i18n="teacherSecond">管理班级与学习小组</li><li data-role-i18n="teacherThird">查看成绩、逐题答卷与薄弱点</li></ul>
+          <button type="button" data-login-role="teacher"><span data-role-i18n="teacherGo">进入教师空间</span><span class="auth-entry-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></span></button>
+        </article>
+        <article class="auth-role-card student">
+          <img class="auth-role-mascot student-mascot" src="{{ url_for('static', filename='role-student-anime-v1.png') }}" width="164" height="164" alt="" aria-hidden="true" decoding="async" draggable="false" />
+          <span class="auth-role-icon" aria-hidden="true">✎</span><span class="auth-role-kicker">STUDENT</span>
+          <h2 data-role-i18n="student">我是学生</h2><p data-role-i18n="studentIntro">加入老师的考试，在练习与 AI 反馈中找到下一步方向。</p>
+          <div class="auth-role-journey">
+            <span class="auth-journey-caption" data-role-i18n="studentJourney">让每一次练习看见进步</span>
+            <ol class="auth-journey-steps">
+              <li><span class="auth-journey-node" aria-hidden="true">01</span><span data-role-i18n="studentStep1">专注作答</span></li>
+              <li><span class="auth-journey-node" aria-hidden="true">02</span><span data-role-i18n="studentStep2">获得反馈</span></li>
+              <li><span class="auth-journey-node" aria-hidden="true">03</span><span data-role-i18n="studentStep3">巩固提升</span></li>
+            </ol>
+          </div>
+          <ul><li data-role-i18n="studentFirst">加入班级并参加考试</li><li data-role-i18n="studentSecond">回顾自己的作答与成绩</li><li data-role-i18n="studentThird">获取 AI 分析与巩固练习</li></ul>
+          <button type="button" data-login-role="student"><span data-role-i18n="studentGo">进入学生空间</span><span class="auth-entry-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></span></button>
+        </article>
+      </div>
+      <p class="auth-role-note" data-role-i18n="note">老师和学生均可直接注册，无需邀请码。</p>
+    </section>
+    <div class="auth-shell" hidden>
       <section class="auth-card">
         <div class="auth-card-inner">
+          <div class="auth-role-toolbar"><button id="switch-auth-role" type="button" data-role-i18n="switchRole">← 切换身份</button><span id="auth-selected-role" class="auth-role-badge"></span></div>
           <form id="login-form" class="auth-form" autocomplete="on">
             <h2>Sign in to Exercise Generator</h2>
             <p>Sign in with your username or registered email and password</p>
@@ -117,7 +155,7 @@
         </div>
       </aside>
     </div>
-    <div class="auth-footer-credit">MetaThink &amp; STEAM Lab @ XJTLU</div>
+    <div class="auth-footer-credit">Meta Think AI &amp; STEAM Lab @ XJTLU</div>
   </section>
 
   <div class="page bank-app {% if not auth.authenticated %}app-hidden{% endif %}">
@@ -126,12 +164,24 @@
         <img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="" />MetaThink AI
       </a>
       <nav class="bank-navigation" aria-label="Main navigation">
-        <button id="nav-library" class="bank-nav active" type="button" aria-current="page"><span aria-hidden="true">▣</span><span data-bank-i18n="library">题库</span><small id="sidebar-bank-count">0</small></button>
-        <button id="nav-exams" class="bank-nav" type="button"><span aria-hidden="true">▤</span><span data-exam-i18n="exams">考试</span></button>
-        <button id="nav-groups" class="bank-nav" type="button"><span aria-hidden="true">♧</span><span data-group-i18n="groups">小组</span></button>
-        <button id="nav-practice" class="bank-nav" type="button"><span aria-hidden="true">✎</span><span data-bank-i18n="practice">练习</span></button>
+        <button id="nav-library" class="bank-nav active" type="button" aria-current="page">
+          <svg class="bank-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="nav-icon-tint" d="M7 3.5h11a1.5 1.5 0 0 1 1.5 1.5v15H7a2.5 2.5 0 0 1-2.5-2.5V6A2.5 2.5 0 0 1 7 3.5Z"/><path d="M4.5 17.5A2.5 2.5 0 0 1 7 15h12.5M8 3.5V15M11.5 7.5a2 2 0 0 1 4 0c0 1.4-2 1.4-2 2.8"/><circle cx="13.5" cy="12.2" r=".65" fill="currentColor" stroke="none"/></svg>
+          <span data-bank-i18n="library">题库</span><small id="sidebar-bank-count">0</small>
+        </button>
+        <button id="nav-practice" class="bank-nav" type="button">
+          <svg class="bank-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="nav-icon-tint" d="m4 20 4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z"/><path d="m14.5 5 4 4M4.5 15l4 4"/></svg>
+          <span data-bank-i18n="practice">练习</span>
+        </button>
+        <button id="nav-exams" class="bank-nav" type="button">
+          <svg class="bank-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="nav-icon-tint" d="M14 3H6a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5V8L14 3Z"/><path d="M14 3v5h5.5M7.5 11.5 9 13l2.5-3M13.5 12H16M7.5 17h8.5"/></svg>
+          <span data-exam-i18n="exams">考试</span>
+        </button>
+        <button id="nav-groups" class="bank-nav" type="button">
+          <svg class="bank-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="nav-icon-tint" cx="12" cy="7" r="3"/><circle cx="4.5" cy="10" r="2.25"/><circle cx="19.5" cy="10" r="2.25"/><path class="nav-icon-tint" d="M6.5 20v-1.5a5.5 5.5 0 0 1 11 0V20"/><path d="M1 19v-1a3.5 3.5 0 0 1 3.5-3.5H5m14 0h.5A3.5 3.5 0 0 1 23 18v1"/></svg>
+          <span data-group-i18n="groups">小组</span>
+        </button>
       </nav>
-      <div class="bank-sidebar-bottom"><a class="bank-nav bank-profile-link" href="/profile" aria-label="个人中心"><span class="bank-profile-avatar" id="bank-profile-avatar" aria-hidden="true">{{ (auth.username[:1] if auth.username else "U")|upper }}</span><span class="bank-profile-label"><span data-bank-i18n="profile">个人中心</span><small id="bank-profile-name">{{ auth.username or "" }}</small></span><span class="bank-profile-arrow" aria-hidden="true">›</span></a><p>MetaThink &amp; STEAM Lab @ XJTLU</p></div>
+      <div class="bank-sidebar-bottom"><a class="bank-nav bank-profile-link" href="/profile" aria-label="个人中心"><span class="bank-profile-avatar" id="bank-profile-avatar" aria-hidden="true">{{ (auth.username[:1] if auth.username else "U")|upper }}</span><span class="bank-profile-label"><span data-bank-i18n="profile">个人中心</span><small id="bank-profile-name">{{ auth.username or "" }}</small></span><span class="bank-profile-arrow" aria-hidden="true">›</span></a><p>Meta Think AI &amp; STEAM Lab @ XJTLU</p></div>
     </aside>
     <div class="bank-workspace">
     <header class="topbar">
@@ -238,44 +288,18 @@
       <div class="creator-composer">
         <label class="sr-only" for="user-input" data-bank-i18n="requirements">出题要求</label>
         <textarea id="user-input" maxlength="8000" placeholder="在这里输入出题要求，例如：根据第三讲生成 10 道中等难度的选择题，重点考查基本概念和实际应用。"></textarea>
-        <div class="creator-suggestions" role="group" aria-labelledby="creator-prompt-label"><span id="creator-prompt-label" data-bank-i18n="tryPrompt">试试这样描述</span><div class="creator-prompt-chips"><button type="button" data-prompt-example="basics" data-bank-i18n="promptBasics">基础概念 · 5 道填空</button><button type="button" data-prompt-example="exam" data-bank-i18n="promptExam">考前复习 · 10 道混合题</button><button type="button" data-prompt-example="challenge" data-bank-i18n="promptChallenge">深入理解 · 5 道简答</button></div></div>
+        <div class="creator-suggestions" role="group" aria-labelledby="creator-prompt-label"><span id="creator-prompt-label" data-bank-i18n="tryPrompt">试试这样描述</span><div class="creator-prompt-chips"><button type="button" data-prompt-example="basics" data-bank-i18n="promptBasics">基础概念 · 5 道填空</button><button type="button" data-prompt-example="choice" data-bank-i18n="promptChoice">知识检测 · 10 道选择</button><button type="button" data-prompt-example="exam" data-bank-i18n="promptExam">考前复习 · 10 道混合题</button><button type="button" data-prompt-example="challenge" data-bank-i18n="promptChallenge">深入理解 · 5 道简答</button></div></div>
         <div class="creator-composer-footer">
-          <div class="creator-import-group"><button id="import-materials-btn" class="creator-import-btn" type="button"><span aria-hidden="true">↥</span><span data-bank-i18n="import">导入文档</span></button><span id="creator-source-summary" aria-live="polite"></span></div>
+          <div class="creator-import-group"><button id="import-materials-btn" class="creator-import-btn" type="button"><span aria-hidden="true">↥</span><span data-bank-i18n="import">导入文档</span></button><button id="import-url-btn" class="creator-import-btn" type="button" aria-expanded="false" aria-controls="creator-url-panel"><span aria-hidden="true">↗</span><span data-bank-i18n="importUrl">上传 URL</span></button><span id="creator-source-summary" aria-live="polite"></span></div>
           <button id="send-btn" type="button">生成题库</button>
         </div>
       </div>
+      <form id="creator-url-panel" class="creator-url-panel" hidden>
+        <label for="creator-url-input" data-bank-i18n="urlLabel">公开资料链接</label>
+        <div class="creator-url-row"><input id="creator-url-input" type="url" maxlength="2048" placeholder="https://example.com/article" required /><button id="creator-url-submit" type="submit" data-bank-i18n="urlSubmit">导入到参考资料</button></div>
+        <p data-bank-i18n="urlHint">支持公开网页、文本和 PDF 直链；登录页、网盘分享和仅靠脚本加载的内容可能无法读取。</p>
+      </form>
       <div id="creator-message" class="bank-message" role="status" aria-live="polite"></div>
-      <div class="creator-resources">
-  <div class="bordered-box">
-    <h2>Knowledge Base</h2>
-    <p class="hint">
-      Supports uploading <strong>txt, md, pdf, docx, pptx, images</strong> and other formats.
-    </p>
-
-    <div class="upload-box">
-      <label class="file-picker">
-        <input id="file-input" type="file" multiple accept=".txt,.md,.pdf,.docx,.pptx,.png,.jpg,.jpeg,.bmp,.tif,.tiff" />
-      </label>
-      <button id="upload-btn">Upload to Knowledge Base</button>
-    </div>
-
-    <div id="upload-result" class="upload-result"></div>
-
-    <!-- Material selection list -->
-    <div class="material-list-box">
-      <div class="material-list-title">Select reference materials (enabled by default)</div>
-      <div id="material-list" class="material-list">
-        <div class="empty-hint material-empty-hint">The knowledge base is currently empty. Please upload files.</div>
-      </div>
-      <div class="material-list-actions">
-        <button id="select-all-materials" class="small-btn" type="button">Select All</button>
-        <button id="clear-materials" class="small-btn" type="button">Clear All</button>
-      </div>
-    </div>
-  </div>
-
-
-      </div>
       <details id="creator-details" class="creator-details">
         <summary><span data-bank-i18n="settings">详细设置</span><span data-bank-i18n="settingsHint">题型、数量、难度与试卷风格</span><span class="details-chevron" aria-hidden="true">⌄</span></summary>
         <p class="creator-settings-note" data-bank-i18n="priorityHint">有具体要求时优先按你的文字出题，未说明的项目使用下方设置。</p>
@@ -394,6 +418,37 @@
 
 
       </details>
+      <div class="creator-resources">
+  <div class="bordered-box">
+    <h2>Knowledge Base</h2>
+    <p class="hint">
+      Supports uploading <strong>txt, md, pdf, docx, pptx, images</strong> and other formats.
+    </p>
+
+    <div class="upload-box">
+      <label class="file-picker">
+        <input id="file-input" type="file" multiple accept=".txt,.md,.pdf,.docx,.pptx,.png,.jpg,.jpeg,.bmp,.tif,.tiff" />
+      </label>
+      <button id="upload-btn">Upload to Knowledge Base</button>
+    </div>
+
+    <div id="upload-result" class="upload-result"></div>
+
+    <!-- Material selection list -->
+    <div class="material-list-box">
+      <div class="material-list-title">Select reference materials (enabled by default)</div>
+      <div id="material-list" class="material-list">
+        <div class="empty-hint material-empty-hint">The knowledge base is currently empty. Please upload files.</div>
+      </div>
+      <div class="material-list-actions">
+        <button id="select-all-materials" class="small-btn" type="button">Select All</button>
+        <button id="clear-materials" class="small-btn" type="button">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+
+      </div>
       <p class="creator-footnote" data-bank-i18n="creatorFootnote">生成后自动保存到个人题库，可随时继续作答。</p>
     </div>
     </div>
@@ -463,18 +518,11 @@
           Another Question
         </button>
         <button
-          id="scenario-understand-btn"
-          class="understand-btn"
+          id="scenario-ask-ai-btn"
+          class="ask-ai-btn"
           type="button"
         >
-          I Understand
-        </button>
-        <button
-          id="scenario-dont-understand-btn"
-          class="dont-understand-btn"
-          type="button"
-        >
-          I Don’t Understand
+          Ask AI
         </button>
       </div>
 
@@ -485,7 +533,7 @@
   class="scenario-grade-result"
 ></div>
 
-<!-- Explanation area (visible after clicking “I don’t understand”) -->
+<!-- Saved explanation area -->
 <div
   id="scenario-modal-explain"
   class="explain-detail"
@@ -556,10 +604,11 @@
 <!-- Outside animated workspace containers so fixed notices use the viewport. -->
 <div id="exam-message" class="bank-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 <div id="group-message" class="bank-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-<script src="{{ url_for('static', filename='app.js') }}?v=bank-20261014-auth"></script>
-<script src="{{ url_for('static', filename='auth-recovery.js') }}?v=auth-20261014-recovery"></script>
-<script src="{{ url_for('static', filename='question-bank.js') }}?v=bank-20261014-groups"></script>
-<script src="{{ url_for('static', filename='exams.js') }}?v=exams-20261014-groups"></script>
-<script src="{{ url_for('static', filename='groups.js') }}?v=groups-20261014"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=roles-20261016-interactive"></script>
+<script src="{{ url_for('static', filename='auth-roles.js') }}?v=roles-20261016-flow-4"></script>
+<script src="{{ url_for('static', filename='auth-recovery.js') }}?v=roles-20261016-interactive"></script>
+<script src="{{ url_for('static', filename='question-bank.js') }}?v=roles-20261016-interactive"></script>
+<script src="{{ url_for('static', filename='exams.js') }}?v=roles-20261016-interactive"></script>
+<script src="{{ url_for('static', filename='groups.js') }}?v=roles-20261016-interactive"></script>
 </body>
 </html>

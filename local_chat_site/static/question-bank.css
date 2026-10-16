@@ -8,6 +8,14 @@
 .bank-navigation { padding:20px 16px; display:grid; gap:8px; }
 .bank-nav { display:flex; align-items:center; gap:13px; width:100%; min-height:46px; padding:12px 15px; border:0; border-radius:9px; background:transparent; color:#596270; font:inherit; font-size:14px; text-decoration:none; text-align:left; cursor:pointer; transition:background 140ms ease,color 140ms ease; }
 .bank-nav > span:first-child { width:21px; text-align:center; font-size:22px; line-height:1; }
+.bank-navigation .bank-nav-icon { display:block; width:22px; height:22px; flex:0 0 22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:color 160ms ease,transform 160ms ease; }
+.bank-nav-icon .nav-icon-tint { fill:currentColor; fill-opacity:.08; }
+.bank-navigation .bank-nav.active .bank-nav-icon,.bank-navigation .bank-nav:focus-visible .bank-nav-icon { color:var(--bank-accent); }
+@media(hover:hover) { .bank-navigation .bank-nav:hover .bank-nav-icon { color:var(--bank-accent); transform:translateY(-1px); } }
+.bank-navigation .bank-nav:active .bank-nav-icon { transform:scale(.96); }
+body.dark-theme .bank-navigation .bank-nav:is(.active,:hover,:focus-visible) .bank-nav-icon { color:#a6bfff; }
+@media(max-width:640px) { .bank-navigation .bank-nav-icon { width:18px; height:18px; flex-basis:18px; } }
+@media(prefers-reduced-motion:reduce) { .bank-navigation .bank-nav-icon { transition:none; transform:none !important; } }
 .bank-nav:hover { background:#eef0f4; color:#253044; }
 .bank-nav.active { background:#e9ecf2; color:#273041; font-weight:700; }
 .bank-nav small { margin-left:auto; padding:2px 6px; background:#fff; border-radius:5px; color:#7a8595; font-size:11px; }
@@ -193,10 +201,30 @@
 .create-bank-dialog #user-input { display:block; width:100%; min-height:170px; max-height:360px; resize:vertical; border:0; border-radius:10px 10px 0 0; background:transparent; padding:20px; font-size:15px; color:#3b4454; line-height:1.7; outline:none; box-shadow:none; }
 .create-bank-dialog #user-input::placeholder { color:#adb4c1; }
 .creator-composer-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 16px; border-top:1px solid #edf1f8; background:#fafbfe; border-radius:0 0 10px 10px; }
-.creator-import-group { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.creator-import-group { display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px; }
+.creator-import-group .creator-import-btn { flex:0 0 auto; white-space:nowrap; }
+.creator-import-group #creator-source-summary { flex-basis:100%; }
+.bank-sidebar-bottom > p { font-size:10px; letter-spacing:-.15px; white-space:nowrap; line-height:1.5; }
 .creator-import-group #creator-source-summary:empty { display:none; }
 .creator-import-btn { display:inline-flex; align-items:center; gap:7px; min-height:39px; padding:8px 12px; border:1px solid #dfe5f0; border-radius:7px; background:#fff; color:#416df5; font:inherit; font-size:13px; cursor:pointer; }
 .creator-import-btn:hover { background:#f6f8ff; }
+.creator-import-btn:disabled { opacity:.55; cursor:wait; }
+.creator-import-btn:focus-visible { outline:2px solid #416df5; outline-offset:3px; }
+.creator-url-panel[hidden] { display:none !important; }
+.creator-url-panel { margin:12px 0 0; padding:14px 16px; border:1px solid #dce5f7; border-radius:10px; background:#f6f9ff; animation:workspaceAppear 160ms ease-out; }
+.creator-url-panel > label { display:block; margin-bottom:8px; font-size:13px; font-weight:600; color:#3d5278; }
+.creator-url-row { display:flex; gap:10px; }
+.creator-url-row input { flex:1; min-width:0; padding:10px 12px; border:1px solid #d4deef; border-radius:7px; font:inherit; font-size:14px; }
+.creator-url-row button { white-space:nowrap; padding:10px 14px; border:0; border-radius:7px; background:#416df5; color:#fff; cursor:pointer; font:inherit; font-size:13px; }
+.creator-url-row button:disabled { opacity:.55; cursor:wait; }
+.creator-url-panel > p { margin:9px 0 0; font-size:11px; line-height:1.7; color:#657895; }
+.creator-resources { margin-top:14px; }
+.bank-app .feedback-tools .understand-row { grid-template-columns:minmax(0,1fr); }
+body.dark-theme .creator-url-panel { background:#172740; border-color:#3a5279; }
+body.dark-theme .creator-url-panel > label { color:#d1def3; }
+body.dark-theme .creator-url-panel > p { color:#b2c3df; }
+body.dark-theme .creator-url-row input { color:#dce5f3; border-color:#3a5279; }
+@media(max-width:640px) { .creator-url-row { flex-direction:column; } .creator-import-group { max-width:none; gap:6px; } .creator-import-group .creator-import-btn { min-height:36px; padding:6px; font-size:11px; gap:4px; } .creator-composer-footer { flex-wrap:wrap; } }
 .creator-import-btn > span:first-child { font-size:19px; }
 #creator-source-summary { color:#596b85; font-size:11px; }
 .create-bank-dialog #send-btn { width:auto; min-width:103px; min-height:39px; margin-left:auto; padding:8px 18px; border-radius:7px; background:#416df5; box-shadow:none; font-size:13px; font-weight:600; }
@@ -261,6 +289,7 @@
 .create-bank-dialog[open] .creator-suggestions button:nth-child(1) { animation-delay:120ms; }
 .create-bank-dialog[open] .creator-suggestions button:nth-child(2) { animation-delay:240ms; }
 .create-bank-dialog[open] .creator-suggestions button:nth-child(3) { animation-delay:360ms; }
+.create-bank-dialog[open] .creator-suggestions button:nth-child(4) { animation-delay:480ms; }
 @keyframes promptReveal { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:none; } }
 .creator-footnote { margin:26px 0 0; text-align:center; color:#adb4c0; font-size:10px; }
 .is-generating .creator-composer { opacity:.8; }
@@ -392,3 +421,7 @@ body.dark-theme .create-bank-dialog input,body.dark-theme .create-bank-dialog te
   .create-bank-dialog .paper-template-heading { flex-direction:column; }
 }
 @media(prefers-reduced-motion:reduce) { .bank-app *, .create-bank-dialog * { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+@media(min-width:641px) and (max-width:1000px) {
+  .bank-sidebar-bottom { padding:18px 16px; }
+  .bank-sidebar-bottom > p { font-size:9px; letter-spacing:-.2px; }
+}

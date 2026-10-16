@@ -12,9 +12,9 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     const capture=async name=>{await page.waitForFunction(()=>document.getAnimations().every(a=>a.playState==='finished'));await page.screenshot({path:path.join(out,name),fullPage:true});};
-    const login=async(account,password)=>{await page.locator('#login-username').fill(account);await page.locator('#login-password').fill(password);await page.locator('#login-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
+    const login=async(account,password)=>{await page.locator('#auth-screen').waitFor({state:'visible'});if(await page.locator('#auth-role-choice').isVisible())await page.locator('[data-login-role=teacher]').click();await page.locator('#login-username').fill(account);await page.locator('#login-password').fill(password);await page.locator('#login-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
     const submit=()=>page.locator('#recovery-submit').click();
-    await page.goto(base);assert.equal(await page.locator('#login-username').getAttribute('placeholder'),'输入用户名或邮箱');
+    await page.goto(base);await page.locator('[data-login-role=teacher]').click();assert.equal(await page.locator('#login-username').getAttribute('placeholder'),'输入用户名或邮箱');
     await page.locator('#login-form .auth-link').click();await page.locator('#register-username').fill('小林_2026');
     await page.locator('#register-email').fill('learner@qq.com');await page.locator('#register-password').fill('old-password');await page.locator('#register-confirm').fill('old-password');await page.locator('#terms-check').check();
     await capture('auth-flexible-register-desktop.png');await page.locator('#register-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});
@@ -23,7 +23,7 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     await page.locator('#logout-btn').click();await login('LEARNER@QQ.COM','old-password');
     assert.equal((await (await context.request.get(base+'/api/private')).json()).user_id,original);
     const oldContext=await browser.newContext();await oldContext.request.post(base+'/api/auth/login',{data:{account:'learner@qq.com',password:'old-password'}});
-    await page.locator('#logout-btn').click();await page.locator('#forgot-password-btn').click();
+    await page.locator('#logout-btn').click();await page.locator('[data-login-role=teacher]').click();await page.locator('#forgot-password-btn').click();
     assert.equal(await page.locator('#forgot-form').isVisible(),true);assert.equal(await page.locator('#login-form').isVisible(),false);
     await page.locator('#recovery-email').fill('learner@qq.com');await capture('auth-recovery-email-desktop.png');await submit();
     await page.locator('#recovery-code-step').waitFor({state:'visible'});assert.equal(await page.locator('#recovery-resend').isDisabled(),true);
@@ -49,7 +49,7 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     await login('learner@qq.com','new-password');assert.equal((await (await context.request.get(base+'/api/private')).json()).user_id,original);
     await page.locator('#nav-groups').click();await page.locator('#group-view').getByRole('button',{name:'创建小组',exact:true}).click();
     await page.locator('.group-dialog').getByLabel('小组名称',{exact:true}).fill('恢复账号后的小组');await page.locator('.group-dialog [type=submit]').click();await page.locator('.group-members').waitFor();
-    await page.locator('#logout-btn').click();await page.locator('#forgot-password-btn').click();
+    await page.locator('#logout-btn').click();await page.locator('[data-login-role=teacher]').click();await page.locator('#forgot-password-btn').click();
     await context.request.post(base+'/_test/control',{data:{enabled:false}});await page.locator('#recovery-email').fill('unknown@qq.com');await submit();
     await page.locator('#forgot-message').filter({hasText:'尚未配置'}).waitFor();assert.equal(await page.locator('#recovery-code-step').isVisible(),false);
     await context.request.post(base+'/_test/control',{data:{enabled:true}});await page.locator('#recovery-email').fill('unknown@qq.com');await submit();await page.locator('#recovery-code-step').waitFor({state:'visible'});

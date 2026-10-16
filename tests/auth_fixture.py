@@ -39,7 +39,7 @@ app.register_blueprint(make_group_blueprint(GroupStore(exams)))
 
 @app.route('/')
 def index():
-    return render_template('index.html', auth={'authenticated': bool(session.get('auth_user_id')), 'username': session.get('username')})
+    return render_template('index.html', auth={'authenticated': bool(session.get('auth_user_id')), 'username': session.get('username'), 'role':session.get('auth_role')})
 
 
 @app.route('/api/question_sets')
@@ -65,6 +65,16 @@ def private():
 
 
 # These test-only controls are not imported or registered by production app.py.
+@app.route('/_test/seed_bank', methods=['POST'])
+def seed_bank():
+    if session.get('auth_role') != 'teacher':
+        return jsonify(ok=False), 403
+    uid = session['auth_user_id']
+    bank = banks.reserve(uid, '物理课堂练习', {})
+    banks.finish(bank, uid, 'Q1 [fill_blank]\n水的冰点是 ____ 摄氏度。')
+    return jsonify(ok=True, bank_id=bank)
+
+
 @app.route('/_test/mailbox')
 def mailbox():
     email = request.args.get('email')

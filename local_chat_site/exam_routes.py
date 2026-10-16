@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from flask import Blueprint, jsonify, request, session, render_template, send_file, current_app
 from exam_store import ExamStore, ExamError, text
 from exam_ai import ExamAI
+from account_access import is_teacher, require_teacher
 
 
 def make_exam_blueprint(store, bank_store, agent_factory, ai=None):
@@ -38,6 +39,9 @@ def make_exam_blueprint(store, bank_store, agent_factory, ai=None):
             return None
         if not session.get("auth_user_id"):
             return jsonify(ok=False, msg="请先登录账号，考试不支持游客作答。"), 401
+        if request.endpoint in {'exams.create', 'exams.draft', 'exams.prepare', 'exams.publish',
+                                'exams.close', 'exams.submissions', 'exams.analytics', 'exams.qr', 'exams.review'}:
+            require_teacher()
         if request.method not in {"GET", "HEAD"}:
             origin = request.headers.get("Origin")
             allowed = {request.host_url.rstrip("/"), os.getenv("PUBLIC_BASE_URL", "").rstrip("/")}
@@ -48,13 +52,25 @@ def make_exam_blueprint(store, bank_store, agent_factory, ai=None):
     def error(exc):
         return jsonify(ok=False, msg=str(exc)), exc.status
 
+    @bp.after_request
+    def private(response):
+        response.headers['Cache-Control'] = 'private, no-store'
+        return response
+
     @bp.route("/exam/<token>")
     def page(token):
-        return render_template("index.html", auth={"authenticated": bool(session.get("auth_user_id")), "username": session.get("username")})
+        return render_template("index.html", auth={"authenticated": bool(session.get("auth_user_id")), "username": session.get("username"), 'role': session.get('auth_role')})
 
     @bp.route("/api/exams")
     def catalog():
-        return jsonify(ok=True, **store.catalog(user()))
+        catalog = store.catalog(user())
+        if not is_teacher():
+            catalog['owned'] = []
+        return jsonify(ok=True, role=session.get('auth_role'), **catalog)
+
+    @bp.route('/api/exams/<exam_id>/submissions/<attempt_id>')
+    def review(exam_id, attempt_id):
+        return jsonify(ok=True, review=store.review(exam_id, user(), attempt_id))
 
     @bp.route("/api/exams", methods=["POST"])
     def create():

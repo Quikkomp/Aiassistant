@@ -14,7 +14,7 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     for(const page of [teacher,student]){page.on('pageerror',err=>errors.push(err.message));page.on('dialog',dialog=>dialog.accept());}
     const groupBtn=(page,name)=>page.locator('#group-view').getByRole('button',{name,exact:true});
     const examBtn=(page,name)=>page.locator('#exam-view').getByRole('button',{name,exact:true});
-    const login=async(page,username)=>{await page.locator('#login-username').fill(username);await page.locator('#login-password').fill('mock-password');await page.locator('#login-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
+    const login=async(page,username)=>{if(await page.locator('#auth-role-choice').isVisible())await page.locator('[data-login-role='+(['Teacher','Other'].includes(username)?'teacher':'student')+']').click();await page.locator('#login-username').fill(username);await page.locator('#login-password').fill('mock-password');await page.locator('#login-form [type=submit]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
     const capture=async(page,name)=>{await page.waitForFunction(()=>document.getAnimations().every(a=>a.playState==='finished'));await page.screenshot({path:path.join(out,name),fullPage:true});};
     await teacher.goto(base);await login(teacher,'Teacher');await teacher.locator('#nav-groups').click();
     await groupBtn(teacher,'创建小组').click();
@@ -48,6 +48,10 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     assert.deepEqual(await teacher.locator('#group-view .exam-metric').allTextContents(),['1','1','1','50']);
     assert.equal(await teacher.locator('#group-view .exam-roster-score').textContent(),'50');
     await capture(teacher,'group-results-desktop.png');
+    await teacher.locator('#group-view .exam-roster-table').getByRole('button',{name:'Student',exact:true}).click();
+    await teacher.locator('#exam-view').getByRole('heading',{name:'学生答案',exact:true}).first().waitFor();
+    await examBtn(teacher,'← 返回成绩列表').click();await teacher.locator('#group-view .exam-stats-grid').waitFor();
+    assert.equal(await teacher.locator('#group-view .exam-roster-score').textContent(),'50');
     const lateContext=await browser.newContext(),late=await lateContext.newPage();late.on('pageerror',err=>errors.push(err.message));
     await late.goto(link);await login(late,'LateStudent');await groupBtn(late,'加入小组').click();
     await late.locator('#nav-exams').click();await late.getByRole('tab',{name:'我参与的',exact:true}).click();await late.locator('.exam-set').waitFor();assert.equal(await late.locator('.exam-set').count(),1);
@@ -76,7 +80,7 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     await groupBtn(student,'查看信息').click();await student.locator('.group-dialog').getByText('已完成 · 50 / 100',{exact:true}).waitFor();
     await student.locator('.group-dialog').getByRole('button',{name:'关闭',exact:true}).click();
     await student.locator('#nav-library').click();assert.equal(await student.locator('#group-view').isVisible(),false);
-    await teacher.locator('#logout-btn').click();await teacher.locator('#login-form').waitFor();await login(teacher,'Other');await teacher.locator('#nav-groups').click();await teacher.locator('#group-view .exam-empty').waitFor();
+    await teacher.locator('#logout-btn').click();await teacher.locator('#auth-role-choice').waitFor();await login(teacher,'Other');await teacher.locator('#nav-groups').click();await teacher.locator('#group-view .exam-empty').waitFor();
     assert.deepEqual(errors,[]);
     console.log('PASS: group create/QR/deep-link sign-in/join, bank review + atomic assignment, student exam inbox/score, late delivery, cohort results, member info/remove/restore, rotated invites, account isolation, mobile/dark/translation; no browser errors');
   }finally{await browser.close();fixture.kill();}

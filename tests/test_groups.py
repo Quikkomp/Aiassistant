@@ -42,7 +42,7 @@ class GroupTests(unittest.TestCase):
     def client(self, user):
         client = self.app.test_client()
         with client.session_transaction() as session:
-            session.update(auth_user_id=user, username=user.title())
+            session.update(auth_user_id=user, username=user.title(), auth_role='student' if user=='student' else 'teacher')
         return client
 
     def call(self, client, method, path, data=None, status=200, headers=None):
@@ -100,7 +100,7 @@ class GroupTests(unittest.TestCase):
         self.call(self.other, 'GET', '/api/groups/'+group['id'], status=404)
         self.join(group)
         for method, suffix, data in [('PUT', '', {'name': 'stolen'}), ('POST', '/invite', {}), ('PUT', '/members/teacher', {'status': 'removed'}), ('POST', '/exams', {})]:
-            self.call(self.student, method, '/api/groups/'+group['id']+suffix, data, status=404 if suffix != '/exams' else 400)
+            self.call(self.student, method, '/api/groups/'+group['id']+suffix, data, status=403)
         self.call(self.teacher, 'POST', '/api/groups', {'name': 'bad origin'}, status=403, headers={'Origin': 'https://evil.example'})
 
     def test_invitation_rotation_and_removed_member_restore(self):
@@ -174,7 +174,7 @@ class GroupTests(unittest.TestCase):
         self.complete(exam)
         self.complete(exam, 'outsider', (1, 1))
         path = f"/api/groups/{group['id']}/exams/{exam['id']}/results"
-        self.call(self.student, 'GET', path, status=404)
+        self.call(self.student, 'GET', path, status=403)
         stats = self.call(self.teacher, 'GET', path)['analytics']
         self.assertEqual((stats['assigned'], stats['started'], stats['completed'], stats['not_started']), (2, 1, 1, 1))
         self.assertEqual(stats['average'], 50)

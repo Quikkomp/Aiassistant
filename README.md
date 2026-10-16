@@ -15,7 +15,18 @@ A Flask-based local RAG study assistant. It lets users upload course materials, 
 
 ## Learning groups
 
-Open **小组 / Groups** in the sidebar. The creator is the group owner; no separate teacher identity verification is implemented.
+Open **小组 / Groups** in the sidebar. Teacher accounts can create groups and become their owners; students can join groups and view only their own membership and exam results.
+
+## Teacher and student accounts
+
+- The entry page has separate teacher/student cards. Either role can register normally with username, email and password; no invitation code or external teacher verification is required. These are self-selected account roles, not verified professional credentials.
+- The selected card expands into sign-in/registration. A saved role belongs to the account, not the entrance: choosing the other card cannot change permissions. A role mismatch prompts the user to switch entrances; email login and password recovery use the same account.
+- Teachers create/review/publish exams, manage their own groups, view score distributions, and open a student's read-only answer sheet from either an exam roster or group results. This includes submitted answers, per-question marks, marking feedback and any existing study report. Teachers cannot access another teacher's private exams.
+- Students have only **My attempts** in Exams, can join shared/assigned exams, resume their single attempt and view their own marks, answers and AI study feedback. Personal question libraries and practice remain available to both roles. Teacher-only APIs enforce roles as well as ownership; hiding buttons is not the permission boundary.
+- Startup creates `account_roles` in the existing account database (MySQL or SQLite), without replacing accounts or passwords. Pre-upgrade accounts retain teacher capabilities to preserve their existing exams/groups. New accounts default to student if an older API client omits the role. Role changes are not exposed through the client. Back up both account and exam databases before deployment; restart the app to apply the migration.
+- The chooser uses short card-expansion transitions and diagonal background trails that extend near the pointer. Touch devices and reduced-motion preferences keep effects minimal. `tests/roles_browser.cjs` uses temporary accounts, mock AI and no real email; `tests/test_account_roles.py` covers role persistence, legacy migration and authorization.
+
+## Group workflow
 
 1. Create a group and invite registered users with its link or QR code. Joining requires sign-in and explicit confirmation. Owners can renew invites to invalidate old links.
 2. In **发布考试 / Assign exam**, select a question set and review its answers, explanations and marking criteria in the existing exam editor. Confirm publication to deliver the exam to all active members. Already-reviewed published exams can also be reused.
@@ -78,6 +89,14 @@ python app.py
 ```
 
 Open the Flask URL printed in the terminal, usually `http://127.0.0.1:5000`.
+
+## Import learning materials from a URL
+
+In **Create question set**, **Upload URL / 上传 URL** sits next to **Import documents / 导入文档**. Enter a public HTTP/HTTPS webpage, plain-text/Markdown URL or direct PDF link. The app extracts webpage text (or saves the PDF), places it in the signed-in user's existing materials folder and runs the same knowledge-base ingest pipeline as file uploads. Successfully imported materials are automatically selected; written requirements and detailed settings then work as usual.
+
+The feature requires sign-in and permits 10 imports per hour per account. Downloads are limited to 8 MB and extracted text to 200,000 characters. Local/private/cloud-metadata addresses and non-standard ports are blocked; redirects are revalidated and connections are pinned to the validated DNS address with TLS certificate checks. Environment proxy settings are not used. No additional packages are required. Network-level outbound filtering remains recommended for production defense in depth; see the [OWASP SSRF prevention guidance](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html).
+
+Sign-in pages, cloud-drive sharing pages, paywalls, JavaScript-only pages and sites that block automated access may not yield usable content. Download an authorized copy and upload it instead. Images/scanned PDFs still depend on the existing document/OCR pipeline. Tests in `tests/test_url_material.py` mock all external requests and verify address restrictions, DNS pinning, redirects, extraction, limits and per-user storage.
 
 ## Accounts and QQ email password recovery
 
@@ -149,6 +168,7 @@ MYSQL_PASSWORD=change_this_password
 3. Start the Flask app once. On startup, `app.py` creates these tables automatically if they do not exist:
 
 - `app_users`
+- `account_roles` (saved teacher/student account role)
 - `auth_security`, `auth_rate_limits`, `password_reset_requests` (account security and recovery)
 - `user_rounds`
 - `user_answers`

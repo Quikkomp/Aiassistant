@@ -4,6 +4,7 @@ from io import BytesIO
 from urllib.parse import urlparse
 from flask import Blueprint, jsonify, request, session, render_template, send_file
 from exam_store import ExamError
+from account_access import require_teacher
 
 
 def make_group_blueprint(store):
@@ -32,6 +33,10 @@ def make_group_blueprint(store):
             return
         if not session.get('auth_user_id'):
             return jsonify(ok=False, msg='请先登录账号，游客不能加入学习小组。'), 401
+        if (request.endpoint in {'groups.rotate', 'groups.qr', 'groups.publish', 'groups.results'}
+                or (request.endpoint == 'groups.catalog' and request.method == 'POST')
+                or (request.endpoint in {'groups.detail', 'groups.member'} and request.method == 'PUT')):
+            require_teacher()
         if request.method not in {'GET', 'HEAD'}:
             origin = request.headers.get('Origin')
             allowed = {request.host_url.rstrip('/'), os.getenv('PUBLIC_BASE_URL', '').rstrip('/')}
@@ -50,7 +55,7 @@ def make_group_blueprint(store):
 
     @bp.route('/group/<token>')
     def page(token):
-        return render_template('index.html', auth={'authenticated': bool(session.get('auth_user_id')), 'username': session.get('username')})
+        return render_template('index.html', auth={'authenticated': bool(session.get('auth_user_id')), 'username': session.get('username'), 'role': session.get('auth_role')})
 
     @bp.route('/api/groups', methods=['GET', 'POST'])
     def catalog():

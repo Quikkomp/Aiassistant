@@ -25,8 +25,8 @@ def make_auth_blueprint(store, recovery):
 
     def signin(user):
         session.clear()
-        session.update(username=user['username'], auth_user_id=user['user_id'], auth_version=user['version'])
-        return jsonify(ok=True, username=user['username'])
+        session.update(username=user['username'], auth_user_id=user['user_id'], auth_version=user['version'], auth_role=user['role'])
+        return jsonify(ok=True, username=user['username'], role=user['role'])
 
     @bp.before_app_request
     def check_session():
@@ -34,12 +34,15 @@ def make_auth_blueprint(store, recovery):
             return
         try:
             version = store.session_version(session['auth_user_id'])
+            role = store.role(session['auth_user_id'])
         except Exception:
             return jsonify(ok=False, code='service_unavailable', msg='账号服务暂不可用，请稍后重试。'), 503
         if version is None or session.get('auth_version', 0) != version:
             session.clear()
             if request.path.startswith('/api/') and not request.path.startswith('/api/auth/'):
                 return jsonify(ok=False, code='session_expired', msg='登录已失效，请重新登录。'), 401
+        else:
+            session['auth_role'] = role
 
     @bp.before_request
     def protect_origin():
@@ -74,7 +77,7 @@ def make_auth_blueprint(store, recovery):
 
     @bp.route('/api/auth/status')
     def status():
-        return jsonify(ok=True, authenticated=bool(session.get('auth_user_id')), username=session.get('username'))
+        return jsonify(ok=True, authenticated=bool(session.get('auth_user_id')), username=session.get('username'), role=session.get('auth_role'))
 
     @bp.route('/api/auth/register', methods=['POST'])
     def register():

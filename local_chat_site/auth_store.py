@@ -19,6 +19,8 @@ MESSAGES = {
     'mail_unavailable': '验证码邮件服务尚未配置或暂不可用，请联系网站管理员。',
     'service_unavailable': '账号服务暂不可用，请稍后重试。', 'session_expired': '登录已失效，请重新登录。',
     'current_password_invalid': '当前密码不正确。',
+    'role_invalid': '请选择学生或老师身份。',
+    'role_mismatch': '账号身份与当前入口不符，请切换到对应的学生或老师入口登录。',
 }
 
 
@@ -79,6 +81,12 @@ class AuthStore:
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP){tail}""")
             cur.execute(f"""CREATE TABLE IF NOT EXISTS auth_security (
                 public_user_id VARCHAR(64) PRIMARY KEY, session_version INTEGER NOT NULL DEFAULT 0){tail}""")
+            cur.execute(f"""CREATE TABLE IF NOT EXISTS account_roles (
+                public_user_id VARCHAR(64) PRIMARY KEY, role VARCHAR(16) NOT NULL){tail}""")
+            # Existing accounts could already manage exams/groups. Preserve that
+            # capability; new registrations explicitly choose a role below.
+            insert = 'INSERT OR IGNORE' if kind == 'sqlite' else 'INSERT IGNORE'
+            cur.execute(insert+" INTO account_roles(public_user_id,role) SELECT public_user_id,'teacher' FROM app_users")
             cur.execute(f"""CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket_key VARCHAR(128) PRIMARY KEY, window_start BIGINT NOT NULL, request_count INTEGER NOT NULL){tail}""")
             cur.execute(f"""CREATE TABLE IF NOT EXISTS password_reset_requests (
@@ -133,6 +141,9 @@ class AuthStore:
             self.limit(cur, kind, scope, identity, maximum, duration)
 
     def register(self, data, ip):
+        role = value(data, 'role', 16) or 'student'
+        if role not in {'teacher', 'student'}:
+            raise AuthError('role_invalid')
         username = normalize_username(value(data, 'username', 64))
         email = normalize_email(value(data, 'email', 254))
         password, confirmation = value(data, 'password', 128), value(data, 'confirm_password', 128)
@@ -143,11 +154,12 @@ class AuthStore:
         try:
             with self.db(write=True) as (cur, kind):
                 self.execute(cur, kind, 'INSERT INTO app_users(username,email,password_hash,public_user_id) VALUES(?,?,?,?)', (username, email, password_hash, user_id))
+                self.execute(cur, kind, 'INSERT INTO account_roles(public_user_id,role) VALUES(?,?)', (user_id, role))
         except Exception as exc:
             if isinstance(exc, sqlite3.IntegrityError) or getattr(exc, 'errno', None) == 1062:
                 raise AuthError('account_exists', 409) from None
             raise
-        return {'username': username, 'user_id': user_id, 'version': 0}
+        return {'username': username, 'user_id': user_id, 'version': 0, 'role': role}
 
     def login(self, data, ip):
         raw = data.get('account', data.get('username', ''))
@@ -166,9 +178,22 @@ class AuthStore:
         password_hash = row[1] if row else self.dummy_hash
         if not check_password_hash(password_hash, password) or not row:
             raise AuthError('invalid_credentials', 401)
+        role = self.role(row[2])
+        requested_role = value(data, 'role', 16)
+        if requested_role and requested_role not in {'teacher', 'student'}:
+            raise AuthError('role_invalid')
+        if requested_role and requested_role != role:
+            raise AuthError('role_mismatch', 403)
         with self.db(write=True) as (cur, kind):
             self.execute(cur, kind, 'DELETE FROM auth_rate_limits WHERE bucket_key=?', ('login-account:'+self.digest('rate', account),))
-        return {'username': row[0], 'user_id': row[2], 'version': row[3]}
+        return {'username': row[0], 'user_id': row[2], 'version': row[3], 'role': role}
+
+    def role(self, user_id):
+        with self.db() as (cur, kind):
+            self.execute(cur, kind, 'SELECT r.role FROM app_users u LEFT JOIN account_roles r ON r.public_user_id=u.public_user_id WHERE u.public_user_id=?', (user_id,))
+            row = cur.fetchone()
+        # Null means an account created by an old worker during rolling upgrade.
+        return (row[0] or 'teacher') if row else None
 
     @property
     def dummy_hash(self):

@@ -1,6 +1,8 @@
 /* Teacher-reviewed snapshots and single-attempt training, independent of personal practice. */
 (() => {
   const $ = id => document.getElementById(id);
+  const teacher = () => window.roleUI?.isTeacher() === true;
+  let reviewData=null,reviewBack=null;
   const W = {
     exams:['考试','Exams'], subtitle:['把你的题库分享给学生，让训练与反馈连成一条学习路径。','Share teacher-reviewed questions and guide students from practice to feedback.'],
     join:['加入考试','Join exam'], banks:['我的题库','My question sets'], published:['草稿与已发布','Drafts & published'], joined:['我参与的','My attempts'],
@@ -104,20 +106,24 @@
     enter(); mode='catalog';
     if(!authenticated()) {content(heading(t('exams'),t('subtitle')),node('p',t('login'),{class:'exam-notice'})); return;}
     message(t('loading'));
-    const [sets,list]=await Promise.all([api('/api/question_sets'),api('/api/exams')]);
+    const [sets,list]=await Promise.all([teacher()?api('/api/question_sets'):Promise.resolve({banks:[]}),api('/api/exams')]);
+    if(list.role)window.roleUI?.apply(list.role);
+    if(!teacher())tab='joined';else if(tab==='joined')tab='banks';
     banks=sets.banks; catalog=list; expandedExams.clear();rosterCache.clear();renderCatalog(); message();
   }
   function renderCatalog() {
     const tabs=node('div','',{class:'exam-tabs',role:'tablist'}), grid=node('div','',{class:'exam-set-grid',role:'tabpanel'});
-    for(const key of ['banks','published','joined']) {
+    for(const key of (teacher()?['banks','published']:['joined'])) {
       const btn=node('button',t(key),{type:'button',class:'exam-tab',role:'tab','aria-selected':String(tab===key)});
       btn.addEventListener('click',()=>{if(!busy){tab=key;renderCatalog();message();}}); tabs.append(btn);
     }
     const rows=tab==='banks'?banks:tab==='published'?catalog.owned:catalog.joined;
+    const catalogSubtitle=teacher()?(zh()?'从题库创建考试，管理班级并查看学生成绩与答卷。':'Create exams, manage classes and review student work.'):(zh()?'参加老师发布的考试，回顾自己的作答与 AI 学习建议。':'Take assigned exams and review your answers and AI guidance.');
+    const catalogActions=teacher()?[button(zh()?'查看班级':'My classes',()=>$('nav-groups').click())]:[button(t('join'),openJoin,true)];
     if(tab==='published') {
       const list=node('div','',{class:'exam-owned-list',role:'tabpanel'});
       rows.forEach(row=>list.append(ownedExamRow(row)));
-      content(heading(t('exams'),t('subtitle'),[button(t('join'),openJoin,true)]),tabs,node('p',t('rowNote'),{class:'exam-list-note'}),rows.length?list:node('div',t('empty'),{class:'exam-empty'}));return;
+      content(heading(t('exams'),catalogSubtitle,catalogActions),tabs,node('p',t('rowNote'),{class:'exam-list-note'}),rows.length?list:node('div',t('empty'),{class:'exam-empty'}));return;
     }
     for(const row of rows) {
       const tile=node('button','',{class:'exam-set',type:'button'});
@@ -130,7 +136,7 @@
         else {attempt=(await api(`/api/exam_attempts/${row.id}`)).attempt;index=0;supportText='';mode=attempt.status==='completed'?'result':'attempt';render();message();}
       })); grid.append(tile);
     }
-    content(heading(t('exams'),t('subtitle'),[button(t('join'),openJoin,true)]),tabs,rows.length?grid:node('div',t(tab==='banks'?'noBanks':'empty'),{class:'exam-empty'}));
+    content(heading(t('exams'),catalogSubtitle,catalogActions),tabs,rows.length?grid:node('div',t(tab==='banks'?'noBanks':'empty'),{class:'exam-empty'}));
   }
   async function openOwnedExam(row,withAnalytics=false) {
     draft=(await api(`/api/exams/${row.id}`)).exam;index=0;
@@ -185,7 +191,7 @@
       const scroll=node('div','',{class:'exam-roster-scroll'}), table=node('table','',{class:'exam-roster-table'}), thead=node('thead'), tr=node('tr'), tbody=node('tbody');
       for(const label of ['studentName','progress','score100','submittedAt'])tr.append(node('th',t(label),{scope:'col'}));thead.append(tr);
       for(const student of data.students) {
-        const entry=node('tr'), identity=node('td');identity.append(node('strong',student.username),node('span',t(student.status),{class:`exam-student-status ${student.status}`}));
+        const entry=node('tr'), identity=node('td');identity.append(button(student.username,()=>openReview(row.id,student.id,()=>{mode='catalog';renderCatalog();})),node('span',t(student.status),{class:`exam-student-status ${student.status}`}));
         const score=student.score===null?'—':String(Number((student.score/data.total*100).toFixed(1)));
         const completedAt=student.completed_at?new Date(student.completed_at).toLocaleString(zh()?'zh-CN':'en-GB',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
         entry.append(identity,node('td',`${student.done} / ${row.question_count}`),node('td',score,{class:'exam-roster-score'}),node('td',completedAt));tbody.append(entry);
@@ -306,10 +312,6 @@
     const support=async(kind,messageText='')=>{
       const res=await api(`/api/exam_attempts/${attempt.id}/support`,{index,kind,message:messageText});supportText=res.text;q.support=[...(q.support||[]),{kind,message:messageText,response:res.text}];result.textContent=supportText;result.hidden=false;message();
     };
-    for(const value of ['understood','unclear']) actions.append(button(t(value),async()=>{
-      await api(`/api/exam_attempts/${attempt.id}/support`,{index,kind:'understanding',value});q.submission.understanding=value;message(t('supportSaved'));
-      if(value==='unclear')await support('explain');
-    }));
     actions.append(button(t('detailed'),()=>support('explain')),button(t('similar'),()=>support('similar')));
     const form=node('form','',{class:'exam-follow-up'}), input=node('input','',{placeholder:t('questionPrompt'),'aria-label':t('ask'),required:''}), ask=node('button',t('ask'),{type:'submit',class:'exam-btn'});
     form.append(input,ask);form.addEventListener('submit',e=>{e.preventDefault();run(()=>support('ask',input.value),ask);});
@@ -356,6 +358,22 @@
   async function showStudents() {
     analytics=(await api(`/api/exams/${draft.id}/analytics`)).analytics;mode='analytics';renderAnalytics();message();
   }
+  async function openReview(examId,attemptId,back){
+    reviewData=(await api(`/api/exams/${examId}/submissions/${attemptId}`)).review;reviewBack=back;mode='review';renderReview();message();
+  }
+  function renderReview(){
+    const data=reviewData,summary=card();
+    summary.append(node('h2',data.username),node('p',`${t(data.status)} · ${data.score===null?'—':data.score+' / '+data.total}`,{class:'exam-notice'}));
+    summary.append(node('p',zh()?'只读答卷：可查看学生已提交的内容，不会代替学生作答或修改成绩。':'Read-only: inspect submitted work without answering for the student or changing marks.',{class:'exam-subtle'}));
+    const papers=data.questions.map((q,i)=>{
+      const section=card(),answer=q.submission;
+      section.append(node('h3',`${t('question')} ${i+1} · ${answer?.status==='graded'?Number((answer.ratio*q.points).toFixed(2))+' / '+q.points:(answer? t('pending'):(zh()?'未作答':'Not answered'))}`),node('p',q.text,{class:'exam-question-text'}));
+      for(const [label,value] of [[zh()?'学生答案':'Student answer',answer?.answer||'—'],[t('answer'),q.answer],[t('explanation'),q.explanation],[t('rubric'),q.rubric],[zh()?'批改反馈':'Grading feedback',answer?.feedback||'—']])section.append(node('h4',label),node('p',value,{class:'exam-text'}));
+      return section;
+    });
+    const report=card();report.append(node('h2',t('weaknesses')),node('p',data.report||(zh()?'学生尚未生成个人分析报告。':'The student has not generated a study report yet.'),{class:'exam-text'}));
+    content(button(zh()?'← 返回成绩列表':'← Back to results',()=>{reviewBack?.();message();}),heading(data.title,zh()?'学生答卷详情':'Student answer sheet'),summary,...papers,report);
+  }
   function renderAnalytics() {
     const stats=node('div','',{class:'exam-stats-grid'});
     const metric=(key,value,suffix='')=>{const el=card();el.append(node('p',t(key),{class:'exam-subtle'}),node('strong',value===null?'—':String(value)+suffix,{class:'exam-metric'}));return el;};
@@ -382,11 +400,12 @@
     }
     const roster=card();roster.append(node('h2',t('students')));
     if(!analytics.students.length)roster.append(node('p',t('noneStudents'),{class:'exam-subtle'}));
-    for(const row of analytics.students)roster.append(node('p',`${row.username} · ${t(row.status)} · ${row.done}/${draft.questions.length} · ${row.score===null?'—':row.score+' / '+Number(analytics.total.toFixed(2))}`,{class:'exam-review-row'}));
+    for(const row of analytics.students){const entry=node('div','',{class:'exam-review-row'});entry.append(button(row.username,()=>openReview(draft.id,row.id,()=>{mode='analytics';renderAnalytics();})),node('span',`${t(row.status)} · ${row.done}/${draft.questions.length} · ${row.score===null?'—':row.score+' / '+Number(analytics.total.toFixed(2))}`));roster.append(entry);}
     content(button(t('back'),()=>{mode='editor';renderEditor();message();}),heading(draft.title,t('analytics'),[button(t('refresh'),showStudents)]),node('p',t('analyticsNote'),{class:'exam-notice'}),stats,details,layout,questions,roster);
   }
-  function render() {if(mode==='catalog')renderCatalog();else if(mode==='editor')renderEditor();else if(mode==='intro')renderIntro();else if(mode==='attempt')renderAttempt();else if(mode==='analytics')renderAnalytics();else renderResult();}
+  function render() {if(mode==='catalog')renderCatalog();else if(mode==='editor')renderEditor();else if(mode==='intro')renderIntro();else if(mode==='attempt')renderAttempt();else if(mode==='analytics')renderAnalytics();else if(mode==='review')renderReview();else renderResult();}
   window.examUI={
+    review(examId,attemptId,back){return run(async()=>{enter();await openReview(examId,attemptId,back);});},
     editBank(bankId,target){return run(async()=>{const data=await api('/api/exams',{bank_id:bankId});enter();groupContext=target;draft=data.exam;index=0;mode='editor';renderEditor();message();});},
     openOwned(id,target=null){return run(async()=>{const data=await api(`/api/exams/${id}`);enter();groupContext=target;draft=data.exam;index=0;mode='editor';renderEditor();message();});},
     openToken(token){groupContext=null;return run(()=>openExam(token));},

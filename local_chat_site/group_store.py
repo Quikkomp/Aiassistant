@@ -162,7 +162,7 @@ class GroupStore:
                 if attempt:
                     answers = graded.get(attempt['id'], [])
                     score = round(sum(points[idx]*ratio for idx, ratio in answers), 2) if attempt['status'] == 'completed' else None
-                    recipient.update(done=len(answers), score=score, completed_at=attempt['completed_at'])
+                    recipient.update(done=len(answers), score=score, completed_at=attempt['completed_at'], attempt_id=attempt['id'])
         stats.update(assigned=len(recipients), not_started=len(recipients)-stats['started'], students=recipients,
                      completion_rate=round(stats['completed']/len(recipients)*100, 1) if recipients else None)
         return stats

@@ -21,7 +21,7 @@ const ready=new Promise((resolve,reject)=>{
   for(const page of [teacher,student])page.on('pageerror',err=>errors.push(err.message));
   const btn=(page,name)=>page.locator('#exam-view').getByRole('button',{name,exact:true});
   const capture=async(page,name)=>{await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await page.waitForFunction(()=>document.getAnimations().every(a=>a.playState==='finished'));await page.screenshot({path:path.join(out,name),fullPage:true});};
-  const login=async(page,username)=>{await page.locator('#login-username').fill(username);await page.locator('#login-password').fill('mock-password');await page.locator('#login-form [type="submit"]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
+  const login=async(page,username)=>{if(await page.locator('#auth-role-choice').isVisible())await page.locator('[data-login-role='+(username==='Teacher'?'teacher':'student')+']').click();await page.locator('#login-username').fill(username);await page.locator('#login-password').fill('mock-password');await page.locator('#login-form [type="submit"]').click();await page.locator('.bank-app').waitFor({state:'visible'});};
   try{
     await teacher.goto(base);await login(teacher,'Teacher');await teacher.locator('#nav-exams').click();
     await teacher.locator('.exam-set').waitFor();await capture(teacher,'exam-library-desktop.png');
@@ -45,7 +45,9 @@ const ready=new Promise((resolve,reject)=>{
     await capture(student,'exam-attempt-desktop.png');
     await student.locator('#exam-view textarea').fill('0°C');await btn(student,'提交并锁定答案').click();
     await student.locator('.exam-grade').waitFor();assert.equal(await student.locator('#exam-view textarea').isDisabled(),true);
-    await student.locator('.exam-learning summary').click();await btn(student,'我还不理解').click();await student.locator('.exam-support-result').waitFor({state:'visible'});
+    await student.locator('.exam-learning summary').click();
+    assert.equal(await btn(student,'我还不理解').count(),0);assert.equal(await btn(student,'我理解了').count(),0);
+    await btn(student,'详细讲解').click();await student.locator('.exam-support-result').waitFor({state:'visible'});
     await btn(student,'生成类似题').click();await student.locator('#exam-message').waitFor({state:'hidden'});
     await student.locator('.exam-follow-up input').fill('这道巩固题为什么是这个温度？');await student.locator('.exam-follow-up [type="submit"]').click();
     await student.locator('#exam-message').waitFor({state:'hidden'});await capture(student,'exam-learning-desktop.png');
@@ -58,7 +60,7 @@ const ready=new Promise((resolve,reject)=>{
     await student.locator('#theme-toggle-btn').click();await capture(student,'exam-result-dark-mobile.png');
     await student.locator('#lang-toggle-btn').click();assert.equal(await student.locator('#exam-view').getByRole('heading',{name:'Weaknesses & revision guidance'}).count(),1);
     await student.reload();await btn(student,'View result').waitFor();await btn(student,'View result').click();assert.equal(await student.locator('.exam-score strong').textContent(),'50');
-    await teacher.locator('#nav-exams').click();await btn(teacher,'加入考试').waitFor();await teacher.getByRole('tab',{name:'我参与的'}).click();assert.equal(await teacher.locator('.exam-set').count(),0);
+    await teacher.locator('#nav-exams').click();await btn(teacher,'查看班级').waitFor();assert.equal(await teacher.getByRole('tab',{name:'我参与的'}).count(),0);assert.equal(await btn(teacher,'加入考试').count(),0);
     // Include an unfinished student and a long-name draft in the horizontal list.
     const pendingContext=await browser.newContext();
     await pendingContext.request.post(base+'/api/auth/login',{data:{username:'Pending Student',password:'mock-password'}});
@@ -88,7 +90,7 @@ const ready=new Promise((resolve,reject)=>{
     await teacher.locator('#lang-toggle-btn').click();await teacher.locator('#theme-toggle-btn').click();
     await teacher.setViewportSize({width:1440,height:1000});
     await publishedRow.getByRole('button',{name:'展开',exact:true}).click();await publishedRow.getByRole('button',{name:'成绩分析',exact:true}).click();
-    await teacher.locator('#exam-view').getByText(/Student · 已完成 · 2\/2 · 50/).waitFor();
+    await teacher.locator('.exam-review-row').filter({has:teacher.getByRole('button',{name:'Student',exact:true})}).getByText(/已完成 · 2\/2 · 50/).waitFor();
     assert.equal(await teacher.locator('.exam-dist-column').count(),5);
     assert.deepEqual(await teacher.locator('.exam-dist-column strong').allTextContents(),['1','0','0','0','0']);
     await capture(teacher,'exam-analytics-desktop.png');

@@ -22,6 +22,7 @@ from exam_import import ExamImportError
 from auth_store import AuthStore
 from auth_routes import make_auth_blueprint
 from mail_service import ResetService
+from url_routes import make_url_blueprint
 
 
 # ---------------- 基础配置 ----------------
@@ -173,6 +174,7 @@ def get_profile_user():
         "username": row[0],
         "email": row[1],
         "public_user_id": row[2],
+        "role": session.get('auth_role'),
         "created_at": str(row[3]) if row[3] is not None else "",
     }
 
@@ -186,6 +188,10 @@ app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
 init_db()
 auth_store = AuthStore(get_auth_db_conn, app.secret_key)
 app.register_blueprint(make_auth_blueprint(auth_store, ResetService(auth_store)))
+app.register_blueprint(make_url_blueprint(
+    lambda: get_user_material_folder(),
+    lambda folder: get_rag_agent_for_current_user().ingest_material(folder),
+    lambda: get_material_files(), auth_store))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PAST_EXAM_UPLOAD_FOLDER, exist_ok=True)
@@ -215,7 +221,7 @@ def current_auth_payload():
     username = session.get("username")
     if not username or not session.get('auth_user_id'):
         return {"authenticated": False, "username": None}
-    return {"authenticated": True, "username": username}
+    return {"authenticated": True, "username": username, 'role': session.get('auth_role')}
 
 
 def require_auth_user_id():

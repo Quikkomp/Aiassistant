@@ -7,6 +7,8 @@
   let saveChain = Promise.resolve();
   let resetEpoch = 0;
   let viewAnimation;
+  let sourceBusy = false;
+  let sourceAbort = null;
   function revealWorkspace(id) {
     viewAnimation?.cancel();
     const view = $(id);
@@ -30,10 +32,14 @@
     creatorSubtitle: ["告诉我们你想练什么，让学习从一个想法开始。", "Tell us what you want to practise. Start with an idea."],
     bankName: ["题库名称（选填）", "Question set name (optional)"], requirements: ["出题要求", "Question requirements"],
     import: ["导入文档", "Import documents"], settings: ["详细设置", "Detailed settings"],
+    importUrl: ["上传 URL", "Upload URL"], urlLabel: ["公开资料链接", "Public material URL"],
+    urlSubmit: ["导入到参考资料", "Add to materials"],
+    urlHint: ["支持公开网页、文本和 PDF 直链；登录页、网盘分享和仅靠脚本加载的内容可能无法读取。", "Public web pages, text and direct PDF links. Sign-in pages, cloud-share pages and script-only content may not work."],
     settingsHint: ["题型、数量、难度与试卷风格", "Type, count, difficulty and paper style"],
     priorityHint: ["文字中的具体要求优先；未说明的项目使用下方设置。", "Your written requirements take priority. These settings supply any unspecified values."],
     tryPrompt: ["试试这样描述", "Try a prompt"],
     promptBasics: ["基础概念 · 5 道填空", "Basics · 5 blanks"],
+    promptChoice: ["知识检测 · 10 道选择", "Knowledge check · 10 MCQs"],
     promptExam: ["考前复习 · 10 道混合题", "Review · 10 mixed"],
     promptChallenge: ["深入理解 · 5 道简答", "Analysis · 5 answers"],
     creatorFootnote: ["生成后自动保存到个人题库，可随时继续作答。", "Automatically saved to your personal library, ready to practise anytime."],
@@ -225,7 +231,10 @@
     $("creator-source-summary").textContent = selected
       ? (zh() ? `${selected} 份资料` : `${selected} materials`)
       : (inputFiles ? (zh() ? "资料上传中…" : "Uploading…") : "");
-    $("send-btn").disabled = ui.busy || banks.length >= 10 || (!prompt && !selected) || (selected > 0 && !kbReady);
+    $("send-btn").disabled = ui.busy || sourceBusy || banks.length >= 10 || (!prompt && !selected) || (selected > 0 && !kbReady);
+    $("import-materials-btn").disabled = ui.busy || sourceBusy;
+    $("import-url-btn").disabled = ui.busy || sourceBusy;
+    $("close-creator-btn").disabled = ui.busy || sourceBusy;
     if (!ui.busy) $("send-btn").textContent = zh() ? "生成题库" : "Generate set";
   }
   function translate() {
@@ -270,6 +279,10 @@
       window.groupUI?.reset();
       window.examUI?.reset();
       resetEpoch += 1; clearTimeout(timer); activeBank = null; banks = [];
+      sourceAbort?.abort(); sourceAbort=null; sourceBusy=false;
+      $("creator-url-input").disabled=false; $("creator-url-submit").disabled=false;
+      $("creator-url-input").value=""; $("creator-url-panel").hidden=true;
+      $("import-url-btn").setAttribute('aria-expanded','false');
       this.setBusy(false);
       $("create-bank-dialog").close(); showLibrary();
       say("", false, "bank-page-message");
@@ -287,8 +300,31 @@
       else { showLibrary(); say(zh() ? "先创建一组题目，再开始练习。" : "Create a question set to start practising.", false, "bank-page-message"); }
     });
     $("close-creator-btn").addEventListener("click", () => { if (!ui.busy) $("create-bank-dialog").close(); });
-    $("create-bank-dialog").addEventListener("cancel", event => { if (ui.busy) event.preventDefault(); });
+    $("create-bank-dialog").addEventListener("cancel", event => { if (ui.busy || sourceBusy) event.preventDefault(); });
     $("create-bank-dialog").addEventListener("close", restoreMaterialSelection);
+    $("import-url-btn").addEventListener("click", () => {
+      const panel = $("creator-url-panel"); panel.hidden = !panel.hidden;
+      $("import-url-btn").setAttribute("aria-expanded", String(!panel.hidden));
+      if (!panel.hidden) $("creator-url-input").focus({preventScroll:true});
+    });
+    $("creator-url-panel").addEventListener("submit", async event => {
+      event.preventDefault(); if (sourceBusy || ui.busy) return;
+      const epoch=resetEpoch, selected=new Set(Array.from(document.querySelectorAll('.material-checkbox:checked'), cb=>cb.value));
+      sourceBusy=true; sourceAbort=new AbortController(); $("creator-url-submit").disabled=true; $("creator-url-input").disabled=true;
+      updateGenerateAvailability(); say(zh() ? "正在读取链接并加入知识库，请稍候…" : "Reading the URL and updating your knowledge base…");
+      let saved=[];
+      try {
+        const response=await fetch('/api/material/import_url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:$("creator-url-input").value.trim()}),signal:sourceAbort.signal});
+        const data=await response.json(); saved=data.saved||[];
+        if(epoch!==resetEpoch)return;
+        if(!response.ok||!data.ok)throw new Error(data.msg||(zh()?"链接导入失败，请重试。":"URL import failed. Please retry."));
+        await refreshKbStats(); if(epoch!==resetEpoch)return;
+        document.querySelectorAll('.material-checkbox').forEach(cb=>{cb.checked=selected.has(cb.value)||saved.includes(cb.value);});
+        $("creator-url-input").value=""; $("creator-url-panel").hidden=true; $("import-url-btn").setAttribute('aria-expanded','false');
+        say(zh()?"链接内容已加入参考资料并自动选中，可以开始出题。":"Imported and selected. You can now generate questions.");
+      } catch(error) {if(epoch===resetEpoch){if(saved.length)await refreshKbStats();say(error.message,true);}}
+      finally {if(epoch===resetEpoch){sourceBusy=false;sourceAbort=null;$("creator-url-submit").disabled=false;$("creator-url-input").disabled=false;updateGenerateAvailability();}}
+    });
     $("import-materials-btn").addEventListener("click", () => $("file-input").click());
     $("file-input").addEventListener("change", async () => {
       if (!$("file-input").files.length) return;
@@ -304,6 +340,7 @@
       button.addEventListener("click", () => {
         const prompts = {
           basics: ["根据所选资料生成 5 道基础概念填空题，难度偏低。", "Create 5 easy fill-in-the-blank questions about core concepts in the selected materials."],
+          choice: ["根据所选资料生成 10 道中等难度的单项选择题，每题提供 A、B、C、D 四个选项，考查核心知识点。", "Create 10 medium-difficulty multiple-choice questions from the selected materials, each with four options A, B, C and D, covering core concepts."],
           exam: ["根据所选资料生成 10 道中等难度的考前复习题，包含选择、填空和简答。", "Create 10 medium exam-review questions from the selected materials, mixing multiple choice, fill-in-the-blank and short answer."],
           challenge: ["根据所选资料生成 5 道高难度简答题，考查比较、分析与实际应用。", "Create 5 challenging short-answer questions about comparison, analysis and application using the selected materials."],
         };

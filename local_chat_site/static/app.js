@@ -437,6 +437,7 @@ function applyAuthI18n() {
     registerForm.querySelector(".auth-switch button").innerText = zh ? "登录" : "Sign in";
   }
   window.recoveryUI?.translate();
+  window.roleUI?.translate();
 }
 
 function applyStaticI18n() {
@@ -566,10 +567,8 @@ function applyStaticI18n() {
   if (scenarioSubmitBtn) scenarioSubmitBtn.innerText = zh ? "提交答案" : "Submit Answer";
   const scenarioNextBtn = document.getElementById("scenario-next-btn");
   if (scenarioNextBtn) scenarioNextBtn.innerText = zh ? "再来一题" : "Another Question";
-  const scenarioUnderstandBtn = document.getElementById("scenario-understand-btn");
-  if (scenarioUnderstandBtn) scenarioUnderstandBtn.innerText = zh ? "我理解了" : "I Understand";
-  const scenarioDontUnderstandBtn = document.getElementById("scenario-dont-understand-btn");
-  if (scenarioDontUnderstandBtn) scenarioDontUnderstandBtn.innerText = zh ? "我还不理解" : "I Don't Understand";
+  const scenarioAskAiBtn = document.getElementById("scenario-ask-ai-btn");
+  if (scenarioAskAiBtn) scenarioAskAiBtn.innerText = zh ? "问 AI" : "Ask AI";
   const scenarioQaTitle = document.querySelector("#scenario-qa-panel .qa-panel-title");
   if (scenarioQaTitle) scenarioQaTitle.innerText = zh ? "继续追问这个情景题" : "Continue Asking About This Scenario";
   const scenarioQaSub = document.querySelector("#scenario-qa-panel .qa-panel-subtitle");
@@ -1300,13 +1299,6 @@ function renderQuestionCard() {
   submitBtn.className = "submit-btn";
   submitBtn.innerText = t("submit");
 
-  const understandBtn = document.createElement("button");
-  understandBtn.className = "understand-btn";
-  understandBtn.innerText = t("got_it");
-
-  const dontUnderstandBtn = document.createElement("button");
-  dontUnderstandBtn.className = "dont-understand-btn";
-  dontUnderstandBtn.innerText = t("i_dont_understand");
 
   // 鉁?鈥滅簿璁测€濇寜閽細鐢ㄦ潵鎵撳紑绮捐寮圭獥
   const explainBtn = document.createElement("button");
@@ -1344,40 +1336,31 @@ function renderQuestionCard() {
     return group;
   };
   understandRow.append(
-    makeActionGroup("feedback-response-group", currentLang === "zh" ? "理解反馈" : "Your understanding", [understandBtn, dontUnderstandBtn]),
     makeActionGroup("feedback-learning-group", currentLang === "zh" ? "学习工具" : "Learning tools", [explainBtn, askAiBtn, scenarioBtn])
   );
 
 
   // 鍙湁鎵规敼杩囧悗鎵嶈兘鐐圭悊瑙ｇ浉鍏虫寜閽?
     // 鍙湁鎵规敼杩囧悗鎵嶈兘鐐圭悊瑙ｇ浉鍏虫寜閽?
-  let canClickUnderstand = false;
+  let canUseLearningTools = false;
   if (
     Array.isArray(answeredFlags) &&
     answeredFlags.length === questionList.length
   ) {
-    canClickUnderstand = !!answeredFlags[idx];
+    canUseLearningTools = !!answeredFlags[idx];
   }
 
-  if (!canClickUnderstand) {
-    understandBtn.disabled = true;
-    dontUnderstandBtn.disabled = true;
+  if (!canUseLearningTools) {
     explainBtn.disabled = true;
     askAiBtn.disabled = true;
 
     const disableTip = t("need_submit_first");
-    understandBtn.title = disableTip;
-    dontUnderstandBtn.title = t("need_submit_finish");
     explainBtn.title = disableTip;
     askAiBtn.title = disableTip;
   } else {
-    understandBtn.disabled = false;
-    dontUnderstandBtn.disabled = false;
     explainBtn.disabled = false;
     askAiBtn.disabled = false;
 
-    understandBtn.title = "";
-    dontUnderstandBtn.title = "";
     explainBtn.title = "";
     askAiBtn.title = "";
   }
@@ -1404,19 +1387,8 @@ function renderQuestionCard() {
   });
 
   // 鎴戠悊瑙ｄ簡锛氳烦涓嬩竴棰?
-  understandBtn.addEventListener("click", () => {
-    if (currentQuestionIndex < questionList.length - 1) {
-      currentQuestionIndex += 1;
-      renderQuestionCard();
-    } else {
-      alert("This is already the last question. You may now review the feedback above or revisit the incorrect questions.");
-    }
-  });
 
   // 鎴戞病鐞嗚В锛氳蛋绮捐 + 鑱婂ぉ閫昏緫
-  dontUnderstandBtn.addEventListener("click", () => {
-    handleDontUnderstand(idx);
-  });
 
   explainBtn.addEventListener("click", () => {
     openExplainModal(idx, explainBtn);
@@ -1438,8 +1410,8 @@ function renderQuestionCard() {
   feedbackTools.append(feedbackSummary, understandRow);
   const feedbackHint = document.createElement("p");
   feedbackHint.className = "feedback-action-hint";
-  feedbackHint.textContent = currentLang === "zh" ? "提交并批改后，即可反馈理解情况、查看讲解或追问 AI。" : "Submit your answer to unlock understanding feedback, explanations and AI follow-up.";
-  feedbackHint.hidden = canClickUnderstand;
+  feedbackHint.textContent = currentLang === "zh" ? "提交并批改后，即可查看讲解或追问 AI。" : "Submit your answer to unlock explanations and AI follow-up.";
+  feedbackHint.hidden = canUseLearningTools;
   feedbackTools.appendChild(feedbackHint);
   actions.appendChild(feedbackTools);
 
@@ -1885,8 +1857,7 @@ function fillScenarioModalFromState(idx) {
 
 // 鉁?鏍规嵁鎯呮櫙棰樻槸鍚﹀凡缁忔壒鏀癸紝鎺у埗鈥滄垜鐞嗚В浜?/ 鎴戜笉鐞嗚В / 鍐嶆潵涓€棰?/ AI 鎻愰棶鈥濇槸鍚﹀彲鐢?
 function updateScenarioButtonsState(idx) {
-  const scenarioUnderstandBtn = document.getElementById("scenario-understand-btn");
-  const scenarioDontUnderstandBtn = document.getElementById("scenario-dont-understand-btn");
+  const scenarioAskAiBtn = document.getElementById("scenario-ask-ai-btn");
   const scenarioNextBtn = document.getElementById("scenario-next-btn");
   const scenarioQaInput = document.getElementById("scenario-qa-input");
   const scenarioQaBtn = document.getElementById("scenario-qa-send-btn");
@@ -1899,13 +1870,9 @@ function updateScenarioButtonsState(idx) {
 
   const disabled = !hasGraded;
 
-  if (scenarioUnderstandBtn) {
-    scenarioUnderstandBtn.disabled = disabled;
-    scenarioUnderstandBtn.title = disabled ? t("scenario_submit_first") : "";
-  }
-  if (scenarioDontUnderstandBtn) {
-    scenarioDontUnderstandBtn.disabled = disabled;
-    scenarioDontUnderstandBtn.title = disabled ? t("need_submit_finish") : "";
+  if (scenarioAskAiBtn) {
+    scenarioAskAiBtn.disabled = disabled;
+    scenarioAskAiBtn.title = disabled ? t("need_submit_finish") : "";
   }
   if (scenarioNextBtn) {
     scenarioNextBtn.disabled = disabled;
@@ -2373,65 +2340,6 @@ function closeExplainModal() {
 }
 
 // ===== t("i_dont_understand") button in main question card: only opens AI dialog, no automatic detailed explanation =====
-async function handleDontUnderstand(idx) {
-  if (!questionList || !questionList[idx]) return;
-
-  const qaPanel = document.getElementById("question-qa-panel");
-  const qaWindow = document.getElementById("qa-chat-window");
-  const qaInput = document.getElementById("qa-input");
-
-  // 鎵撳紑骞惰缃负鈥滄湰棰樿拷闂€濇ā寮忕殑鏍囬
-  if (qaPanel) {
-    qaPanel.style.display = "flex"; // .qa-panel 鏄?flex 甯冨眬
-
-    const qaTitleEl = qaPanel.querySelector(".qa-panel-title");
-    const qaSubtitleEl = qaPanel.querySelector(".qa-panel-subtitle");
-    if (qaTitleEl) {
-      qaTitleEl.innerText = currentLang === "zh" ? "继续追问这道题" : "Follow-up Questions";
-    }
-    if (qaSubtitleEl) {
-      qaSubtitleEl.innerText =
-        currentLang === "zh" ? "围绕当前题目继续提问，我会结合题目上下文回答。" : "Ask about the current question and I will answer with this problem's context.";
-    }
-  }
-
-  if (qaWindow) {
-    // 绗竴娆¤繘鍏モ€滄湰棰樿拷闂€濇ā寮忔椂锛岀粰涓€鍙ュ紩瀵艰瘽
-    if (!qaWindow.dataset.initialized) {
-      const followupPrompts = [
-        "Which knowledge point is still unclear?",
-        "Do you have any other questions?",
-        "Which concept is still not fully understood?",
-        "Is there anything from this content that remains unclear?",
-        "Would you like clarification on any part?",
-        "Is there any unanswered question you would like to add?",
-        "Which part of the topic is still confusing?"
-      ];
-
-      const randomPrompt =
-        followupPrompts[Math.floor(Math.random() * followupPrompts.length)];
-
-      // 濡傛灉宸茬粡鏈夊叾瀹冩秷鎭紙姣斿 Ask AI 鍏堟墦寮€杩囷級锛屽氨涓嶈娓呯┖锛屽彧杩藉姞鎻愮ず
-      const hasMessages = qaWindow.querySelector(".qa-message");
-      if (!hasMessages) {
-        qaWindow.innerHTML = "";
-      }
-
-      appendQaBubble("assistant", randomPrompt);
-      qaWindow.dataset.initialized = "1";
-    }
-
-    qaWindow.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  if (qaInput) {
-    qaInput.placeholder =
-      "You may ask further questions about this problem.";
-    qaInput.focus();
-  }
-}
-
-// Ask AI锛氭墦寮€鈥滃彲浠ラ棶浠讳綍涓滆タ鈥濈殑瀵硅瘽妗?
 async function handleAskAi(idx) {
   if (!questionList || !questionList[idx]) return;
 
@@ -2472,7 +2380,7 @@ async function handleAskAi(idx) {
 
 // Scenario-based question version of t("i_dont_understand")
 // Scenario-based question version of t("i_dont_understand") 鈥?directly enter AI Q&A mode (same logic as main exam questions)
-async function handleScenarioDontUnderstand() {
+async function openScenarioQa() {
   if (currentScenarioIndex == null) return;
   const idx = currentScenarioIndex;
 
@@ -3456,7 +3364,8 @@ function setAuthMode(mode) {
   if (registerMsg) registerMsg.textContent = "";
 }
 
-function showApp(username) {
+function showApp(username, role) {
+  window.roleUI?.apply(role || (username ? 'teacher' : 'guest'));
   const authScreen = document.getElementById("auth-screen");
   const page = document.querySelector(".page");
   const accountChip = document.getElementById("account-chip");
@@ -3492,6 +3401,8 @@ function showAuth() {
   if (accountChip) accountChip.classList.add("hidden");
   if (guestLoginBtn) guestLoginBtn.classList.add("hidden");
   setAuthMode("login");
+  window.roleUI?.apply('guest');
+  window.roleUI?.reset();
 }
 
 async function postAuth(url, body = {}) {
@@ -3524,19 +3435,22 @@ function bindAuthUi() {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const submitBtn = loginForm.querySelector("button[type='submit']");
+      window.roleUI?.lock(true);
       if (submitBtn) submitBtn.disabled = true;
       setAuthMessage("login-message", "");
       try {
         const data = await postAuth("/api/auth/login", {
+          role: window.roleUI?.selected || 'student',
           username: document.getElementById("login-username").value,
           password: document.getElementById("login-password").value,
         });
         setAuthMessage("login-message", "Signed in successfully.", true);
-        showApp(data.username);
+        showApp(data.username, data.role);
       } catch (err) {
         setAuthMessage("login-message", err.message);
       } finally {
         if (submitBtn) submitBtn.disabled = false;
+        window.roleUI?.lock(false);
       }
     });
   }
@@ -3546,20 +3460,23 @@ function bindAuthUi() {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const submitBtn = registerForm.querySelector("button[type='submit']");
+      window.roleUI?.lock(true);
       if (submitBtn) submitBtn.disabled = true;
       setAuthMessage("register-message", "");
       try {
         const data = await postAuth("/api/auth/register", {
+          role: window.roleUI?.selected || 'student',
           username: document.getElementById("register-username").value,
           email: document.getElementById("register-email").value,
           password: document.getElementById("register-password").value,
           confirm_password: document.getElementById("register-confirm").value,
         });
         setAuthMessage("register-message", "Account created.", true);
-        showApp(data.username);
+        showApp(data.username, data.role);
       } catch (err) {
         setAuthMessage("register-message", err.message);
       } finally {
+        window.roleUI?.lock(false);
         if (submitBtn) submitBtn.disabled = false;
       }
     });
@@ -3744,10 +3661,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ===== 鎯呮櫙杩佺Щ寮圭獥鎸夐挳缁戝畾 =====
   const scenarioCloseBtn = document.getElementById("scenario-close-btn");
-  const scenarioUnderstandBtn = document.getElementById("scenario-understand-btn");
   const scenarioSubmitBtn = document.getElementById("scenario-submit-btn");
-  const scenarioDontUnderstandBtn = document.getElementById(
-    "scenario-dont-understand-btn"
+  const scenarioAskAiBtn = document.getElementById(
+    "scenario-ask-ai-btn"
   );
   const scenarioNextBtn = document.getElementById("scenario-next-btn");
   const scenarioAnswerInput = document.getElementById("scenario-modal-answer");
@@ -3758,12 +3674,6 @@ document.addEventListener("DOMContentLoaded", () => {
     scenarioCloseBtn.addEventListener("click", closeScenarioModal);
   }
 
-  if (scenarioUnderstandBtn) {
-    scenarioUnderstandBtn.addEventListener("click", () => {
-      // 鈥滄垜鐞嗚В浜嗏€?= 鐩存帴鍏抽棴鎯呮櫙缁冧範鐣岄潰
-      closeScenarioModal();
-    });
-  }
 
   if (scenarioSubmitBtn) {
     scenarioSubmitBtn.addEventListener("click", () => {
@@ -3785,10 +3695,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  if (scenarioDontUnderstandBtn) {
-    scenarioDontUnderstandBtn.addEventListener(
+  if (scenarioAskAiBtn) {
+    scenarioAskAiBtn.addEventListener(
       "click",
-      handleScenarioDontUnderstand
+      openScenarioQa
     );
   }
 

@@ -63,6 +63,7 @@ class ExamTests(unittest.TestCase):
         with client.session_transaction() as session:
             session["auth_user_id"] = user
             session["username"] = user.title()
+            session['auth_role'] = 'student' if user == 'student' else 'teacher'
         return client
 
     def call(self, client, method, path, data=None, status=200):
@@ -85,9 +86,9 @@ class ExamTests(unittest.TestCase):
 
     def test_auth_owner_and_origin(self):
         self.call(self.app.test_client(), "GET", "/api/exams", status=401)
-        self.call(self.student, "POST", "/api/exams", {"bank_id": self.bank_id}, status=404)
+        self.call(self.student, "POST", "/api/exams", {"bank_id": self.bank_id}, status=403)
         draft = self.draft()
-        self.call(self.student, "GET", f"/api/exams/{draft['id']}", status=404)
+        self.call(self.student, "GET", f"/api/exams/{draft['id']}", status=403)
         response = self.teacher.post("/api/exams", json={"bank_id": self.bank_id}, headers={"Origin": "https://malicious.invalid"})
         self.assertEqual(response.status_code, 403)
 
@@ -171,7 +172,7 @@ class ExamTests(unittest.TestCase):
         self.call(self.teacher, "POST", f"/api/exams/{exam['id']}/close", {})
         self.assertEqual(self.start(token)["id"], packet["id"])
         self.call(self.other, "POST", f"/api/exams/shared/{token}/start", {}, status=409)
-        self.call(self.student, "GET", f"/api/exams/{exam['id']}/submissions", status=404)
+        self.call(self.student, "GET", f"/api/exams/{exam['id']}/submissions", status=403)
         rows = self.call(self.teacher, "GET", f"/api/exams/{exam['id']}/submissions")["submissions"]
         self.assertEqual(len(rows), 1)
 
@@ -198,7 +199,7 @@ class ExamTests(unittest.TestCase):
             self.store.complete(attempt["id"], name)
         self.store.start(token, "incomplete", "Incomplete")
         path = f"/api/exams/{exam['id']}/analytics"
-        self.call(self.student, "GET", path, status=404)
+        self.call(self.student, "GET", path, status=403)
         stats = self.call(self.teacher, "GET", path)["analytics"]
         self.assertEqual(stats["started"], 3)
         self.assertEqual(stats["completed"], 2)

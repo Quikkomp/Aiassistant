@@ -30,9 +30,9 @@ const server = http.createServer(async (req,res)=>{
   if(url.pathname==='/api/auth/login') {
     loginRequests++;
     if(data.password!=='demo-password') {res.statusCode=401; return send({ok:false,msg:'用户名或密码不正确'});}
-    return send({ok:true,username:data.username});
+    return send({ok:true,username:data.username,role:data.role});
   }
-  if(url.pathname==='/api/auth/register') {registerRequests++; return send({ok:true,username:data.username});}
+  if(url.pathname==='/api/auth/register') {registerRequests++; return send({ok:true,username:data.username,role:data.role});}
   if(url.pathname==='/api/auth/guest') {guestRequests++; return send({ok:true});}
   if(url.pathname==='/api/auth/logout') return send({ok:true});
   if(url.pathname==='/api/question_sets') return send({ok:true,banks:[bank],limit:10});
@@ -53,11 +53,13 @@ const server = http.createServer(async (req,res)=>{
   const capture=async name=>{await settle(); await page.screenshot({path:path.join(out,name),fullPage:true});};
   const fits=()=>page.evaluate(()=>document.querySelector('#auth-screen').scrollWidth<=innerWidth);
   try {
-    await page.goto(base);
+    await page.goto(base);await page.locator('[data-login-role=student]').click();
     assert.equal(await page.locator('#login-form').isVisible(),true);
     assert.equal(await page.locator('.bank-app').isVisible(),false);
     const layout=await page.evaluate(()=>({form:document.querySelector('.auth-card').getBoundingClientRect().x,visual:document.querySelector('.auth-visual').getBoundingClientRect().x,animation:getComputedStyle(document.querySelector('.auth-card')).animationName}));
-    assert.ok(layout.form<layout.visual);
+    assert.ok(layout.visual<layout.form, 'Visual left, login form right');
+    assert.ok(await page.locator('.auth-shell').evaluate(e=>e.getBoundingClientRect().width<=1321),'Login card stays compact');
+    assert.ok(await page.locator('.auth-copy-login h1').evaluate(e=>e.getBoundingClientRect().height<parseFloat(getComputedStyle(e).lineHeight)*1.5),'Welcome title fits on one line on desktop');
     assert.equal(layout.animation,'authFormArrive');
     assert.ok(await fits());
     await capture('auth-login-desktop.png');
@@ -96,10 +98,11 @@ const server = http.createServer(async (req,res)=>{
     await page.locator('#nav-library').click();
     await settle();
     assert.equal(await page.locator('#bank-library-view').evaluate(el=>getComputedStyle(el).opacity),'1');
-    await page.locator('#logout-btn').click();
+    await page.locator('#logout-btn').click();await page.locator('[data-login-role=student]').click();
     await page.locator('#login-form').waitFor({state:'visible'});
     assert.equal(await page.locator('.auth-card').evaluate(el=>getComputedStyle(el).animationName),'authFormArrive');
     await page.setViewportSize({width:390,height:844});
+    await settle();
     await page.locator('#auth-lang-toggle-btn').click();
     assert.ok(await fits());
     assert.equal(await page.locator('.auth-visual').isVisible(),false);
@@ -117,7 +120,7 @@ const server = http.createServer(async (req,res)=>{
     assert.equal(registerRequests,1);
     assert.equal(await page.locator('#account-name').textContent(),'NewStudent');
     await page.emulateMedia({reducedMotion:'reduce'});
-    await page.goto(base);
+    await page.goto(base);await page.locator('[data-login-role=student]').click();
     assert.equal(await page.locator('.auth-card').evaluate(el=>getComputedStyle(el).animationName),'none');
     await page.locator('#guest-btn').click();
     await page.locator('#bank-library-view').waitFor({state:'visible'});

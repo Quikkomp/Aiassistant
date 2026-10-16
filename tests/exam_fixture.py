@@ -30,7 +30,7 @@ app.register_blueprint(make_group_blueprint(GroupStore(exam_store)))
 
 @app.route("/")
 def index():
-    return render_template("index.html", auth={"authenticated": bool(session.get("auth_user_id")), "username": session.get("username")})
+    return render_template("index.html", auth={"authenticated": bool(session.get("auth_user_id")), "username": session.get("username"), 'role':session.get('auth_role')})
 
 
 @app.route("/api/auth/<action>", methods=["POST"])
@@ -40,7 +40,8 @@ def auth(action):
         username = request.get_json()["username"]
         session["auth_user_id"] = username
         session["username"] = username
-        return jsonify(ok=True, username=username)
+        session['auth_role']='teacher' if username in {'Teacher','Other'} else 'student'
+        return jsonify(ok=True, username=username, role=session['auth_role'])
     return jsonify(ok=True)
 
 
