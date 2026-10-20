@@ -67,7 +67,7 @@ def open_public(url, deadline):
             sock = ssl.create_default_context().wrap_socket(sock, server_hostname=host)
         conn.sock = sock
         path = quote(urlunsplit(('', '', parts.path or '/', parts.query, '')), safe="/%?:=&+;,@!$'()*~-._")
-        conn.request('GET', path, headers={'User-Agent': 'MetaThinkAI-MaterialImporter/1.0',
+        conn.request('GET', path, headers={'User-Agent': 'WizPractice-MaterialImporter/1.0',
                                          'Accept': 'text/html,text/plain,application/pdf', 'Accept-Encoding': 'identity'})
         response = conn.getresponse()
         if response.status in {301, 302, 303, 307, 308}:

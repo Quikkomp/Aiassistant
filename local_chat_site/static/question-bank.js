@@ -173,7 +173,7 @@
     activeBank = bank;
     restoreMaterialSelection();
     $("active-bank-title").textContent = bank.title;
-    $("exam-feedback").textContent = saved.examFeedback || t("feedback_default");
+    window.mathUI.setText($("exam-feedback"), saved.examFeedback || t("feedback_default"));
     $("bank-library-view").hidden = true; $("bank-practice-view").hidden = false;
     $("nav-library").classList.remove("active"); $("nav-library").removeAttribute("aria-current");
     $("nav-practice").classList.add("active"); $("nav-practice").setAttribute("aria-current", "page");
@@ -186,7 +186,7 @@
     return JSON.parse(JSON.stringify({ questionAnswers, questionEvaluations, answeredFlags, currentQuestionIndex,
       questionExplainText, questionExplainStage, scenarioQuestionTexts, scenarioAnswers, scenarioEvaluations,
       scenarioExplainStage, scenarioExplainText, currentRoundId, hasShownRoundFeedback,
-      examFeedback: $("exam-feedback").textContent }));
+      examFeedback: window.mathUI.source($("exam-feedback")) }));
   }
   function scheduleSave(immediate = false) {
     clearTimeout(timer);

@@ -19,7 +19,7 @@ const server = http.createServer(async (req,res) => {
   if (url.pathname === '/') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); return res.end('<h1>Library</h1>'); }
   if (url.pathname.startsWith('/static/')) {
     const file = path.join(site, url.pathname);
-    res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'image/png');
+    res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'image/png');
     return res.end(fs.readFileSync(file));
   }
   let raw=''; for await (const chunk of req) raw+=chunk;

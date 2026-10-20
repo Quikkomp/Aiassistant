@@ -38,6 +38,7 @@
   const node=(tag,value='',attrs={})=>{
     const el=document.createElement(tag); el.textContent=value;
     for(const [key,val] of Object.entries(attrs)) el.setAttribute(key,String(val));
+    if(el.matches('.exam-text,.exam-question-text')) window.mathUI.render(el);
     return el;
   };
   const message=(value='',error=false)=>{
@@ -310,7 +311,7 @@
     if(!supportText) supportText=q.support?.at(-1)?.response||'';
     const actions=node('div','',{class:'exam-actions'}), result=node('div',supportText,{class:'exam-support-result exam-text',role:'status'});result.hidden=!supportText;
     const support=async(kind,messageText='')=>{
-      const res=await api(`/api/exam_attempts/${attempt.id}/support`,{index,kind,message:messageText});supportText=res.text;q.support=[...(q.support||[]),{kind,message:messageText,response:res.text}];result.textContent=supportText;result.hidden=false;message();
+      const res=await api(`/api/exam_attempts/${attempt.id}/support`,{index,kind,message:messageText});supportText=res.text;q.support=[...(q.support||[]),{kind,message:messageText,response:res.text}];window.mathUI.setText(result,supportText);result.hidden=false;message();
     };
     actions.append(button(t('detailed'),()=>support('explain')),button(t('similar'),()=>support('similar')));
     const form=node('form','',{class:'exam-follow-up'}), input=node('input','',{placeholder:t('questionPrompt'),'aria-label':t('ask'),required:''}), ask=node('button',t('ask'),{type:'submit',class:'exam-btn'});

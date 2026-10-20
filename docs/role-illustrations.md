@@ -1,5 +1,10 @@
 # Role-card illustrations
 
+Historical assets only: the current WizPractice / 智练 home page no longer uses
+these cartoon characters. They were replaced on 2026-10-20 with code-native
+academic SVG motifs (teacher assessment and student learning). These original
+files and prompts are retained for reference, not loaded by the current UI.
+
 Generated with the built-in `image_gen` tool (not the CLI). Each illustration was generated separately, inspected, and copied unchanged into the repository. Both PNGs are 1254 × 1254 RGBA with genuine transparent backgrounds. CSS scales them for display without altering the source files.
 
 Assets:

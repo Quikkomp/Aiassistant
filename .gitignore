@@ -11,6 +11,7 @@ local_chat_site/exams.sqlite3*
 tmp/exam-test-deps/
 tmp/pdfs/
 output/ui-review/
+output/pdf/
 local_chat_site/materials/
 local_chat_site/vector_store/
 local_chat_site/student_logs/

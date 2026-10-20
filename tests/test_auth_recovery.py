@@ -237,6 +237,8 @@ class AuthRecoveryTests(unittest.TestCase):
             self.assertEqual(smtp.call_args.args, ('smtp.qq.com',465))
             client.login.assert_called_once_with('sender@qq.com','test-only-authorization')
             message=client.send_message.call_args.args[0]
+            self.assertEqual(message['Subject'], '智练 WizPractice 密码重置验证码')
+            self.assertIn('智练 WizPractice', str(message['From']))
             self.assertIn('001234', message.get_content())
             self.assertEqual(message['To'], 'student@example.com')
         settings['SMTP_SECURITY']='none'

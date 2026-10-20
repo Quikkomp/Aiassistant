@@ -348,7 +348,7 @@ function applyAuthI18n() {
   if (loginCopy) {
     const loginKicker = loginCopy.querySelector(".auth-kicker");
     if (loginKicker) loginKicker.remove();
-    loginCopy.querySelector("h1").innerText = zh ? "欢迎来到 Exercise Generator" : "Welcome to Exercise Generator";
+    loginCopy.querySelector("h1").innerText = zh ? "欢迎来到智练 WizPractice" : "Welcome to WizPractice";
     const items = loginCopy.querySelectorAll(".auth-benefits div");
     const text = zh
       ? [
@@ -373,7 +373,7 @@ function applyAuthI18n() {
   if (registerCopy) {
     const registerKicker = registerCopy.querySelector(".auth-kicker");
     if (registerKicker) registerKicker.remove();
-    registerCopy.querySelector("h1").innerText = zh ? "开始使用 Exercise Generator 练习" : "Start practicing with Exercise Generator";
+    registerCopy.querySelector("h1").innerText = zh ? "开始使用智练 WizPractice" : "Start practicing with WizPractice";
     const items = registerCopy.querySelectorAll(".auth-benefits div");
     const text = zh
       ? [
@@ -398,7 +398,7 @@ function applyAuthI18n() {
   if (loginForm) {
     const loginBadge = loginForm.querySelector(".auth-badge");
     if (loginBadge) loginBadge.remove();
-    loginForm.querySelector("h2").innerText = zh ? "登录 Exercise Generator" : "Sign in to Exercise Generator";
+    loginForm.querySelector("h2").innerText = zh ? "登录智练 WizPractice" : "Sign in to WizPractice";
     loginForm.querySelector("p").innerText = zh ? "使用用户名或注册邮箱与密码进入你的练习空间" : "Sign in with your username or registered email and password";
     loginForm.querySelector("label").childNodes[0].textContent = zh ? "用户名或邮箱\n              " : "Username or email\n              ";
     document.getElementById("login-username").placeholder = zh ? "输入用户名或邮箱" : "Enter username or email";
@@ -418,7 +418,7 @@ function applyAuthI18n() {
   if (registerForm) {
     const registerBadge = registerForm.querySelector(".auth-badge");
     if (registerBadge) registerBadge.remove();
-    registerForm.querySelector("h2").innerText = zh ? "创建 Exercise Generator 账户" : "Create your Exercise Generator account";
+    registerForm.querySelector("h2").innerText = zh ? "创建智练 WizPractice 账户" : "Create your WizPractice account";
     registerForm.querySelector("p").innerText = zh ? "填写表单，创建你的个人练习空间" : "Complete the form below to create your personal exercise workspace";
     const labels = registerForm.querySelectorAll("label");
     labels[0].childNodes[0].textContent = zh ? "用户名\n              " : "Username\n              ";
@@ -441,6 +441,8 @@ function applyAuthI18n() {
 }
 
 function applyStaticI18n() {
+  document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
+  document.title = currentLang === "zh" ? "智练 WizPractice | 智能练习平台" : "WizPractice | Practice with insight";
   const zh = currentLang === "zh";
   const panelTitle = document.querySelector(".panel-title");
   if (panelTitle) panelTitle.innerText = t("title");
@@ -515,7 +517,7 @@ function applyStaticI18n() {
   const exportPdfBtn = document.getElementById("export-pdf-btn");
   if (exportPdfBtn && !exportPdfBtn.dataset.loading) exportPdfBtn.innerText = t("export_pdf");
   const examFeedback = document.getElementById("exam-feedback");
-  if (examFeedback) examFeedback.innerText = t("feedback_default");
+  if (examFeedback) window.mathUI.setText(examFeedback, t("feedback_default"));
   const scenarioEntryBtn = document.getElementById("scenario-entry-btn");
   if (scenarioEntryBtn && scenarioEntryBtn.disabled) scenarioEntryBtn.innerText = t("scenario_entry_disabled");
 
@@ -724,7 +726,7 @@ function renderFeedbackText(container, text) {
   const raw = String(text || "").trim();
   if (!raw) return;
 
-  raw.split(/\r?\n/).forEach((line) => {
+  window.mathUI.feedbackLines(raw).forEach((line) => {
     const div = document.createElement("div");
     const trimmed = line.trim();
     if (/^Result\s*:/i.test(trimmed)) {
@@ -736,7 +738,7 @@ function renderFeedbackText(container, text) {
     } else {
       div.className = "feedback-line";
     }
-    div.textContent = line;
+    window.mathUI.setText(div, line);
     container.appendChild(div);
   });
 }
@@ -1026,7 +1028,7 @@ function appendQaBubble(role, text) {
 
   const div = document.createElement("div");
   div.className = "qa-message " + (role === "user" ? "qa-user" : "qa-assistant");
-  div.innerText = text;
+  window.mathUI.setText(div, text);
 
   win.appendChild(div);
   win.scrollTop = win.scrollHeight;
@@ -1258,7 +1260,7 @@ function renderQuestionCard() {
   if (currentQuestionType === "multiple_choice") {
     renderMultipleChoiceQuestionBody(body, questionList[idx], idx);
   } else {
-    body.innerText = questionList[idx];
+    window.mathUI.setText(body, questionList[idx]);
   }
 
   // 绛旈鍖哄煙
@@ -1378,7 +1380,7 @@ function renderQuestionCard() {
   explainBox.className = "explain-detail";
   explainBox.style.display = "none";
   if (questionExplainText[idx]) {
-    explainBox.innerText = questionExplainText[idx];
+    window.mathUI.setText(explainBox, questionExplainText[idx]);
   }
 
   // 鎵规敼鎸夐挳閫昏緫
@@ -1731,14 +1733,14 @@ function renderMultipleChoiceQuestionBody(container, rawText, idx) {
   });
 
   if (choices.length < 2) {
-    container.innerText = rawText;
+    window.mathUI.setText(container, rawText);
     container.appendChild(createChoiceAnswerControl(idx));
     return;
   }
 
   const prompt = document.createElement("div");
   prompt.className = "question-prompt-text";
-  prompt.innerText = promptLines.join("\n");
+  window.mathUI.setText(prompt, promptLines.join("\n"));
   container.appendChild(prompt);
 
   const group = document.createElement("div");
@@ -1760,7 +1762,7 @@ function renderMultipleChoiceQuestionBody(container, rawText, idx) {
 
     const optionText = document.createElement("span");
     optionText.className = "question-choice-text";
-    optionText.textContent = text;
+    window.mathUI.setText(optionText, text);
 
     btn.appendChild(badge);
     btn.appendChild(optionText);
@@ -1839,13 +1841,13 @@ function fillScenarioModalFromState(idx) {
   if (!modalQuestion || !answerInput || !resultBox || !explainBox) return;
 
   const q = scenarioQuestionTexts[idx] || "";
-  modalQuestion.textContent = q || t("scenario_not_ready");
+  window.mathUI.setText(modalQuestion, q || t("scenario_not_ready"));
 
   answerInput.value = scenarioAnswers[idx] || "";
-  resultBox.textContent = scenarioEvaluations[idx] || "";
+  window.mathUI.setText(resultBox, scenarioEvaluations[idx] || "");
 
   const explainText = scenarioExplainText[idx] || "";
-  explainBox.textContent = explainText;
+  window.mathUI.setText(explainBox, explainText);
   explainBox.style.display = explainText ? "block" : "none";
 
   if (qaPanel && qaWindow) {
@@ -2199,7 +2201,7 @@ async function gradeScenarioQuestion(idx, submitBtn, resultBox) {
       // /api/grade 杩斿洖瀛楁鍚嶆槸 result锛岃繖閲屼繚鎸佷竴鑷?
       scenarioEvaluations[idx] = data.result;
       if (resultBox) {
-        resultBox.innerText = data.result;
+        window.mathUI.setText(resultBox, data.result);
       }
 
       // 鉁?鎵规敼鎴愬姛鍚庯紝鎵嶅厑璁哥偣鍑烩€滄垜鐞嗚В浜?/ 鎴戜笉鐞嗚В / 鍐嶆潵涓€棰?/ AI 鎻愰棶鈥?
@@ -2241,13 +2243,13 @@ function openExplainModal(idx, triggerBtn) {
   if (!modal || !questionEl || !contentEl) return;
 
   // 鏄剧ず褰撳墠棰樼洰
-  questionEl.textContent = questionList[idx] || "";
+  window.mathUI.setText(questionEl, questionList[idx] || "");
   modal.classList.remove("hidden");
 
   // 濡傛灉宸茬粡鐢熸垚杩囩簿璁诧紝鐩存帴鐢ㄧ紦瀛?
   const existing = questionExplainText[idx];
   if (existing) {
-    contentEl.innerText = existing;
+    window.mathUI.setText(contentEl, existing);
     return;
   }
 
@@ -2306,7 +2308,7 @@ async function generateExplainForQuestion(idx, contentEl, triggerBtn) {
       questionExplainText[idx] = explanation;
 
       if (contentEl) {
-        contentEl.innerText = explanation;
+        window.mathUI.setText(contentEl, explanation);
       }
     } else {
       const msg = data.msg || "Failed to generate explanation, please try again.";
@@ -2436,7 +2438,7 @@ function appendScenarioQaBubble(role, text) {
   const div = document.createElement("div");
   div.className =
     "qa-message " + (role === "user" ? "qa-user" : "qa-assistant");
-  div.textContent = text;
+  window.mathUI.setText(div, text);
   win.appendChild(div);
   win.scrollTop = win.scrollHeight;
 }
@@ -2609,9 +2611,9 @@ function checkRoundAndRequestFeedback() {
 
   const feedbackBox = document.getElementById("exam-feedback");
   if (feedbackBox) {
-    feedbackBox.innerText = wrongQuestions && wrongQuestions.length > 0
+    window.mathUI.setText(feedbackBox, wrongQuestions && wrongQuestions.length > 0
       ? "正在根据错题生成个性化反馈，请稍候..."
-      : "All answers in this round are correct. Saving your practice history...";
+      : "All answers in this round are correct. Saving your practice history...");
   }
 
     fetch("/api/exam_feedback", {
@@ -2650,7 +2652,7 @@ function checkRoundAndRequestFeedback() {
 function showExamFeedback(text) {
   const feedbackBox = document.getElementById("exam-feedback");
   if (feedbackBox) {
-    feedbackBox.innerText = text;
+    window.mathUI.setText(feedbackBox, text);
   }
   window.bankUI?.scheduleSave(true);
 }
@@ -2680,7 +2682,7 @@ function setQuestions(rawText) {
   // Reset personalized feedback display area
   const feedbackBox = document.getElementById("exam-feedback");
   if (feedbackBox) {
-    feedbackBox.innerText = "After completing all questions, I will tell you which knowledge points need improvement.";
+    window.mathUI.setText(feedbackBox, "After completing all questions, I will tell you which knowledge points need improvement.");
   }
 
   renderQuestionCard();
@@ -2727,6 +2729,7 @@ function renderTextWithLinks(container, text) {
   if (lastIndex < text.length) {
     container.appendChild(document.createTextNode(text.slice(lastIndex)));
   }
+  window.mathUI.render(container);
 }
 
 // Append a chat message
@@ -3010,7 +3013,7 @@ function renderPastExamList() {
 
     const textDiv = document.createElement("div");
     textDiv.className = "exam-db-text";
-    textDiv.textContent = item.question || "";
+    window.mathUI.setText(textDiv, item.question || "");
 
     headerRow.appendChild(checkbox);
     headerRow.appendChild(textDiv);

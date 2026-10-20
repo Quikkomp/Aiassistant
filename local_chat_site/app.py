@@ -482,30 +482,15 @@ def _build_questions_pdf(questions, title="Generated Practice Paper"):
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
-        from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
         from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     except Exception as exc:
         raise RuntimeError("PDF dependency is missing. Please install reportlab first.") from exc
 
+    from pdf_fonts import get_pdf_font_name
+
     buffer = BytesIO()
-    font_name = "Helvetica"
-    bold_font_name = "Helvetica-Bold"
-    font_candidates = [
-        r"C:\Windows\Fonts\msyh.ttc",
-        r"C:\Windows\Fonts\simhei.ttf",
-        r"C:\Windows\Fonts\simsun.ttc",
-        r"C:\Windows\Fonts\Deng.ttf",
-    ]
-    for font_path in font_candidates:
-        if os.path.exists(font_path):
-            try:
-                pdfmetrics.registerFont(TTFont("AiAssistantCJK", font_path))
-                font_name = "AiAssistantCJK"
-                bold_font_name = "AiAssistantCJK"
-                break
-            except Exception:
-                continue
+    font_name = get_pdf_font_name()
+    bold_font_name = font_name
 
     doc = SimpleDocTemplate(
         buffer,

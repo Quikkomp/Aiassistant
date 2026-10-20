@@ -51,7 +51,7 @@ async function fetchJson(url, options) {
 }
 function applyLanguage() {
   document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
-  document.title = t("center") + " - MetaThink AI";
+  document.title = t("center") + (language === "zh" ? " - 智练 WizPractice" : " - WizPractice");
   document.querySelectorAll("[data-profile-i18n]").forEach(el => { el.textContent = t(el.dataset.profileI18n); });
   document.querySelector(".profile-navigation").setAttribute("aria-label", t("center"));
   $("profile-lang-btn").textContent = language === "zh" ? "EN" : "中文";
@@ -153,6 +153,8 @@ function renderDetail(data) {
     card.append(header, node("div", "round-question", answer.question || ""), block(t("yourAnswer"), answer.student_answer || t("noAnswer")), block(t("feedback"), answer.evaluation || t("noFeedback")));
     $("round-answers").appendChild(card);
   });
+  window.mathUI.render($("round-analysis"));
+  window.mathUI.render($("round-answers"));
 }
 async function loadRoundDetail(id) {
   const token = ++detailRequest;

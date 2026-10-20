@@ -1,0 +1,7 @@
+/* Keep the question/option hit area intact; only wide formulas scroll. */
+.math-content { min-width: 0; overflow-wrap: anywhere; }
+.math-content .katex { font-size: 1.1em; white-space: normal; text-indent: 0; }
+.math-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: .2em 0; margin: .65em 0; }
+.math-content .katex-display > .katex { white-space: nowrap; }
+.question-choice-text.math-content { flex: 1; }
+.math-content .katex-error { color: inherit; }

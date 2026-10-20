@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>个人中心 - MetaThink AI</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=bank-20261010-profile" />
+  <title>个人中心 - 智练 WizPractice</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='wizpractice-mark.svg') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/katex-0.19.0/katex.min.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='math-content.css') }}?v=math-20261020" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=wizpractice-20261020" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=wizpractice-20261020" />
   <link rel="stylesheet" href="{{ url_for('static', filename='profile.css') }}?v=profile-20261010" />
 </head>
 <body class="profile-body">
   <div class="page bank-app profile-app">
     <aside class="bank-sidebar profile-sidebar">
-      <a class="bank-brand logo" href="/"><img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="" />MetaThink AI</a>
+      <a class="bank-brand logo" href="/" aria-label="WizPractice 智练"><img class="logo-img" src="{{ url_for('static', filename='wizpractice-mark.svg') }}" alt="" /><span class="brand-wordmark">WizPractice<small>智练</small></span></a>
       <div class="profile-sidebar-user"><div id="profile-avatar" class="profile-avatar">U</div><div><strong id="profile-username">--</strong><span id="profile-email">--</span></div></div>
       <nav class="bank-navigation profile-navigation" aria-label="个人中心导航">
         <button class="bank-nav active" type="button" data-profile-view="info" aria-current="page" aria-controls="profile-info-view"><span aria-hidden="true">♙</span><span data-profile-i18n="info">个人资料</span></button>
         <button class="bank-nav" type="button" data-profile-view="history" aria-controls="profile-history-view"><span aria-hidden="true">▤</span><span data-profile-i18n="history">学习记录</span><small id="profile-nav-rounds">0</small></button>
         <button class="bank-nav" type="button" data-profile-view="security" aria-controls="profile-security-view"><span aria-hidden="true">⚿</span><span data-profile-i18n="security">账号安全</span></button>
       </nav>
-      <div class="bank-sidebar-bottom profile-sidebar-bottom"><a class="bank-nav" href="/"><span aria-hidden="true">←</span><span data-profile-i18n="back">返回题库</span></a><p>MetaThink &amp; STEAM Lab @ XJTLU</p></div>
+      <div class="bank-sidebar-bottom profile-sidebar-bottom"><a class="bank-nav" href="/"><span aria-hidden="true">←</span><span data-profile-i18n="back">返回题库</span></a><p>WizPractice &amp; STEAM Lab @ XJTLU</p></div>
     </aside>
     <div class="bank-workspace">
       <header class="topbar"><span class="profile-breadcrumb" data-profile-i18n="center">个人中心</span><div class="topbar-right"><button id="profile-theme-btn" class="topbar-icon-btn" type="button" aria-label="切换主题">☾</button><button id="profile-lang-btn" class="small-btn lang-toggle-btn" type="button">EN</button><button id="profile-logout-btn" class="profile-secondary-btn" type="button" data-profile-i18n="logout">退出登录</button></div></header>
@@ -52,6 +55,9 @@
       </main>
     </div>
   </div>
-  <script src="{{ url_for('static', filename='profile.js') }}?v=profile-20261014-auth"></script>
+  <script src="{{ url_for('static', filename='vendor/katex-0.19.0/katex.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/katex-0.19.0/auto-render.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='math-content.js') }}?v=math-20261020"></script>
+  <script src="{{ url_for('static', filename='profile.js') }}?v=wizpractice-20261020"></script>
 </body>
 </html>

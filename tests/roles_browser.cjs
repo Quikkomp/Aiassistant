@@ -13,17 +13,18 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     for(const p of [teacher,student])p.on('pageerror',e=>errors.push(e.message));
     const settle=p=>p.waitForFunction(()=>document.getAnimations().every(a=>a.playState==='finished'));
     const capture=async(p,name)=>{await settle(p);await p.screenshot({path:path.join(out,name),fullPage:true});};
-    const assertMascots=async p=>{
+    const assertAcademicVisuals=async p=>{
       await settle(p);
-      assert.equal(await p.locator('.auth-role-mascot').count(),2);
-      await p.locator('.auth-role-mascot').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
+      assert.equal(await p.locator('.auth-role-mascot').count(),0);
+      assert.equal(await p.locator('.auth-role-visual').count(),2);
+      assert.equal(await p.locator('#auth-screen img[src*="anime"]').count(),0);
       const valid=await p.locator('.auth-role-card').evaluateAll(cards=>cards.every(card=>{
-        const img=card.querySelector('.auth-role-mascot'),r=img.getBoundingClientRect(),c=card.getBoundingClientRect();
+        const img=card.querySelector('.auth-role-visual'),r=img.getBoundingClientRect(),c=card.getBoundingClientRect();
         const clear=[card.querySelector('h2'),card.querySelector('p')].every(el=>{const t=el.getBoundingClientRect();return r.right<=t.left||r.left>=t.right||r.bottom<=t.top||r.top>=t.bottom;});
-        return img.naturalWidth>0&&r.left>=c.left&&r.right<=c.right&&r.top>=c.top&&r.bottom<=c.bottom&&clear&&getComputedStyle(img).pointerEvents==='none';
+        return img.tagName.toLowerCase()==='svg'&&img.getAttribute('aria-hidden')==='true'&&r.left>=c.left&&r.right<=c.right&&r.top>=c.top&&r.bottom<=c.bottom&&clear&&getComputedStyle(img).pointerEvents==='none';
       }));
-      if(!valid){await p.screenshot({path:path.join(out,'roles-mascot-layout-debug.png'),fullPage:true});console.log(await p.locator('.auth-role-card').evaluateAll(cards=>cards.map(c=>({role:c.className,card:c.getBoundingClientRect().toJSON(),image:c.querySelector('img').getBoundingClientRect().toJSON(),title:c.querySelector('h2').getBoundingClientRect().toJSON(),description:c.querySelector('p').getBoundingClientRect().toJSON()}))));}
-      assert.equal(valid,true,'Mascots must load, stay within the cards and not overlap headings or descriptions');
+      if(!valid){await p.screenshot({path:path.join(out,'roles-visual-layout-debug.png'),fullPage:true});}
+      assert.equal(valid,true,'Academic visuals must stay within the cards and not overlap headings or descriptions');
     };
     const register=async(p,role,name)=>{
       await p.locator('[data-login-role='+role+']').click();await settle(p);
@@ -36,13 +37,19 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     };
     const eb=(p,name)=>p.locator('#exam-view').getByRole('button',{name,exact:true});
     await teacher.goto(base);await teacher.locator('#auth-role-choice').waitFor();
+    assert.equal(await teacher.locator('#auth-role-title').innerText(),'欢迎来到智练 WizPractice');
+    assert.ok((await teacher.title()).includes('智练 WizPractice'));
+    assert.equal(await teacher.locator('img[src*="metathink-logo"]').count(),0);
+    await teacher.locator('.auth-topbar .logo-img').evaluate(img=>img.decode());
+    assert.ok(await teacher.locator('.auth-topbar .logo-img').evaluate(img=>img.naturalWidth>0&&img.src.includes('wizpractice-mark.svg')));
+    assert.ok(!/MetaThink|Meta Think|Exercise Generator/.test(await teacher.locator('body').innerText()));
     assert.equal(await teacher.locator('#login-form').isVisible(),false);
     const cards=await teacher.locator('.auth-role-card').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,w:r.width,h:r.height};}));
     assert.ok(cards[0].w>=399&&cards[0].w<=401&&cards[0].h>=570&&cards[0].x<cards[1].x);
     assert.equal(cards[0].h,cards[1].h);
     assert.ok(await teacher.locator('#auth-role-title').evaluate(e=>e.getBoundingClientRect().top<130));
     assert.equal(await teacher.locator('#auth-role-choice [data-role-i18n=eyebrow]').count(),0);
-    await assertMascots(teacher);
+    await assertAcademicVisuals(teacher);
     assert.equal(await teacher.locator('.auth-trail').count(),32);
     assert.equal(await teacher.locator('.auth-trail').first().evaluate(e=>getComputedStyle(e,'::before').height),'2px');
     assert.equal(await teacher.locator('.auth-role-journey').count(),2);
@@ -57,7 +64,8 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     await capture(teacher,'roles-entry-arrow-hover.png');
     assert.equal(await teacher.locator('[data-login-role=teacher]').textContent(),label,'Hover must not change the button label');
     await teacher.locator('#auth-lang-toggle-btn').click();assert.equal(await teacher.locator('.auth-journey-caption').first().textContent(),'A clearer teaching journey');assert.equal(await teacher.locator('[data-login-role=student] svg').count(),1);
-    await assertMascots(teacher);await capture(teacher,'roles-choice-en-desktop.png');
+    assert.equal(await teacher.locator('#auth-role-title').innerText(),'Welcome to WizPractice');
+    await assertAcademicVisuals(teacher);await capture(teacher,'roles-choice-en-desktop.png');
     await teacher.locator('#auth-lang-toggle-btn').click();await teacher.mouse.move(20,80);
     await capture(teacher,'roles-choice-desktop.png');
     const trail=teacher.locator('.auth-trail').nth(2),r=await trail.boundingBox();await teacher.mouse.move(r.x+r.width/2,r.y+r.height/2);
@@ -92,7 +100,7 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     await capture(teacher,'roles-student-answer-review.png');
     await teacher.setViewportSize({width:390,height:844});await capture(teacher,'roles-review-mobile.png');assert.ok(await teacher.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await teacher.locator('#logout-btn').click();await teacher.locator('#auth-role-choice').waitFor();await capture(teacher,'roles-choice-mobile.png');
-    await assertMascots(teacher);await teacher.locator('#auth-lang-toggle-btn').click();await assertMascots(teacher);await capture(teacher,'roles-choice-en-mobile.png');await teacher.locator('#auth-lang-toggle-btn').click();
+    await assertAcademicVisuals(teacher);await teacher.locator('#auth-lang-toggle-btn').click();await assertAcademicVisuals(teacher);await capture(teacher,'roles-choice-en-mobile.png');await teacher.locator('#auth-lang-toggle-btn').click();
     assert.ok(await teacher.locator('#auth-screen').evaluate(e=>e.scrollWidth<=innerWidth));
     await teacher.locator('[data-login-role=student]').click();await teacher.locator('#login-username').fill('teacher_01');await teacher.locator('#login-password').fill('password-123');await teacher.locator('#login-form [type=submit]').click();await teacher.locator('#login-message').filter({hasText:'身份与当前入口不符'}).waitFor();
     await teacher.locator('#switch-auth-role').click();await teacher.emulateMedia({reducedMotion:'reduce'});await teacher.locator('[data-login-role=teacher]').focus();assert.equal(await teacher.locator('[data-login-role=teacher] .auth-entry-arrow').evaluate(e=>e.getAnimations().length),0);await teacher.locator('[data-login-role=teacher]').click();assert.equal(await teacher.locator('.auth-shell').evaluate(e=>e.getAnimations().length),0);

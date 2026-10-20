@@ -26,7 +26,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/static/')) {
     const file = path.join(site, url.pathname);
     if (!fs.existsSync(file)) { res.statusCode = 404; res.end(); return; }
-    res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'image/png');
+    res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'image/png');
     res.end(fs.readFileSync(file)); return;
   }
   let body = '';

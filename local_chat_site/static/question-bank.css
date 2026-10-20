@@ -425,3 +425,7 @@ body.dark-theme .create-bank-dialog input,body.dark-theme .create-bank-dialog te
   .bank-sidebar-bottom { padding:18px 16px; }
   .bank-sidebar-bottom > p { font-size:9px; letter-spacing:-.2px; }
 }
+.brand-wordmark { display:inline-flex; align-items:center; gap:7px; color:#26354c; -webkit-text-fill-color:currentColor; letter-spacing:-.025em; }
+.brand-wordmark small { color:#7b8ca6; font-size:10px; font-weight:600; letter-spacing:.08em; }
+body.dark-theme .brand-wordmark { color:#cad5e6; }
+@media(max-width:1000px) { .bank-brand .brand-wordmark small { display:none; } }

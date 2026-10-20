@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Local Model Knowledge Base Assistant</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=bank-20261009" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=nav-icons-20261016" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}?v=roles-20261016-mascots-5" />
+  <title>智练 WizPractice | 智能练习平台</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='wizpractice-mark.svg') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/katex-0.19.0/katex.min.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='math-content.css') }}?v=math-20261020" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=wizpractice-20261020" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='question-bank.css') }}?v=wizpractice-20261020" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}?v=wizpractice-20261020" />
   <link rel="stylesheet" href="{{ url_for('static', filename='exams.css') }}?v=exams-20261014-scroll" />
   <link rel="stylesheet" href="{{ url_for('static', filename='groups.css') }}?v=roles-20261016-interactive" />
 </head>
@@ -14,17 +17,28 @@
   <section id="auth-screen" class="auth-screen {% if auth.authenticated %}hidden{% endif %}" aria-label="Account access">
     <header class="auth-topbar">
       <div class="logo">
-        <img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="MetaThink AI logo" />
-        MetaThink AI
+        <img class="logo-img" src="{{ url_for('static', filename='wizpractice-mark.svg') }}" alt="" />
+        <span class="brand-wordmark">WizPractice<small>智练</small></span>
       </div>
       <button id="auth-lang-toggle-btn" class="small-btn auth-lang-toggle-btn" type="button">EN</button>
     </header>
     <div id="auth-role-backdrop" class="auth-role-backdrop" aria-hidden="true"></div>
     <section id="auth-role-choice" class="auth-role-choice" aria-labelledby="auth-role-title">
-      <div class="auth-role-heading"><h1 id="auth-role-title" data-role-i18n="welcome">欢迎来到 MetaThink AI</h1><p data-role-i18n="intro">选择你的身份，进入属于你的学习与教学空间。</p></div>
+      <div class="auth-role-heading"><h1 id="auth-role-title" data-role-i18n="welcome">欢迎来到智练 WizPractice</h1><p data-role-i18n="intro">选择你的身份，进入属于你的学习与教学空间。</p></div>
       <div class="auth-role-cards">
         <article class="auth-role-card teacher">
-          <img class="auth-role-mascot teacher-mascot" src="{{ url_for('static', filename='role-teacher-anime-v1.png') }}" width="164" height="164" alt="" aria-hidden="true" decoding="async" draggable="false" />
+          <svg class="auth-role-visual teacher-visual" viewBox="0 0 164 164" aria-hidden="true" focusable="false" fill="none">
+            <circle cx="86" cy="80" r="66" class="visual-halo"/>
+            <path d="M18 130h132M24 32v98M24 98h126M24 66h126" class="visual-grid"/>
+            <rect x="35" y="22" width="83" height="107" rx="10" class="visual-page"/>
+            <path d="M50 42h34M50 51h48" class="visual-rule"/>
+            <rect x="49" y="66" width="13" height="13" rx="3" class="visual-tint"/><path d="m52 72 3 3 5-6M70 72h30" class="visual-stroke"/>
+            <rect x="49" y="89" width="13" height="13" rx="3" class="visual-tint"/><path d="m52 95 3 3 5-6M70 95h24" class="visual-stroke"/>
+            <rect x="88" y="97" width="59" height="49" rx="9" class="visual-page"/>
+            <path d="M99 135h36" class="visual-grid"/>
+            <path d="M104 130v-9M116 130v-16M128 130v-23" class="visual-bars"/>
+            <circle cx="127" cy="35" r="13" class="visual-tint"/><path d="m121 35 4 4 8-9" class="visual-stroke"/>
+          </svg>
           <span class="auth-role-icon" aria-hidden="true">▤</span><span class="auth-role-kicker">TEACHER</span>
           <h2 data-role-i18n="teacher">我是老师</h2><p data-role-i18n="teacherIntro">从课程资料到课堂考试，轻松了解每一位学生的进步。</p>
           <div class="auth-role-journey">
@@ -39,7 +53,16 @@
           <button type="button" data-login-role="teacher"><span data-role-i18n="teacherGo">进入教师空间</span><span class="auth-entry-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></span></button>
         </article>
         <article class="auth-role-card student">
-          <img class="auth-role-mascot student-mascot" src="{{ url_for('static', filename='role-student-anime-v1.png') }}" width="164" height="164" alt="" aria-hidden="true" decoding="async" draggable="false" />
+          <svg class="auth-role-visual student-visual" viewBox="0 0 164 164" aria-hidden="true" focusable="false" fill="none">
+            <circle cx="81" cy="81" r="66" class="visual-halo"/>
+            <path d="M20 127h127M26 34v93M26 96h120M26 64h120" class="visual-grid"/>
+            <path d="M27 48q25-10 53 3 28-13 55-3v70q-27-11-55 2-28-13-53-2V48Z" class="visual-page"/>
+            <path d="M80 52v67M41 65l24 2M41 77l24 2M41 89l18 2M96 66l23-2M96 78l23-2M96 90l17-2" class="visual-rule"/>
+            <path d="m43 137 27-8 28 10 32-16" class="visual-route"/>
+            <circle cx="43" cy="137" r="4" class="visual-dot"/><circle cx="70" cy="129" r="4" class="visual-dot"/><circle cx="98" cy="139" r="4" class="visual-dot"/>
+            <circle cx="130" cy="123" r="12" class="visual-tint"/><path d="m125 123 3 3 7-8" class="visual-stroke"/>
+            <rect x="103" y="18" width="38" height="30" rx="8" class="visual-page"/><path d="m113 33 5 5 12-13" class="visual-stroke"/>
+          </svg>
           <span class="auth-role-icon" aria-hidden="true">✎</span><span class="auth-role-kicker">STUDENT</span>
           <h2 data-role-i18n="student">我是学生</h2><p data-role-i18n="studentIntro">加入老师的考试，在练习与 AI 反馈中找到下一步方向。</p>
           <div class="auth-role-journey">
@@ -61,7 +84,7 @@
         <div class="auth-card-inner">
           <div class="auth-role-toolbar"><button id="switch-auth-role" type="button" data-role-i18n="switchRole">← 切换身份</button><span id="auth-selected-role" class="auth-role-badge"></span></div>
           <form id="login-form" class="auth-form" autocomplete="on">
-            <h2>Sign in to Exercise Generator</h2>
+            <h2>Sign in to WizPractice</h2>
             <p>Sign in with your username or registered email and password</p>
 
             <label>Username or email
@@ -84,7 +107,7 @@
           </form>
 
           <form id="register-form" class="auth-form hidden" autocomplete="on">
-            <h2>Create your Exercise Generator account</h2>
+            <h2>Create your WizPractice account</h2>
             <p>Complete the form below to create your personal exercise workspace</p>
 
             <label>Username
@@ -133,7 +156,7 @@
       </section>
       <aside class="auth-visual">
         <div class="auth-visual-content auth-copy auth-copy-login">
-          <h1>Welcome to Exercise Generator</h1>
+          <h1>Welcome to WizPractice</h1>
           <div class="auth-benefits">
             <div><strong>Question generation</strong><span>Create targeted exercises from your own course files and selected model questions</span></div>
             <div><strong>Personal study workspace</strong><span>Manage uploaded materials, question banks, exam practice, and AI feedback in one place</span></div>
@@ -142,7 +165,7 @@
           </div>
         </div>
         <div class="auth-visual-content auth-copy auth-copy-register">
-          <h1>Start practicing with Exercise Generator</h1>
+          <h1>Start practicing with WizPractice</h1>
           <div class="auth-benefits">
             <div><strong>Build your practice space</strong><span>Set up a personal account for uploaded course resources and generated exercises</span></div>
             <div><strong>Learn from feedback</strong><span>Review grading results, explanations, and weak points after each practice round</span></div>
@@ -155,13 +178,13 @@
         </div>
       </aside>
     </div>
-    <div class="auth-footer-credit">Meta Think AI &amp; STEAM Lab @ XJTLU</div>
+    <div class="auth-footer-credit">WizPractice &amp; STEAM Lab @ XJTLU</div>
   </section>
 
   <div class="page bank-app {% if not auth.authenticated %}app-hidden{% endif %}">
     <aside class="bank-sidebar">
-      <a class="bank-brand logo" href="/" aria-label="MetaThink AI">
-        <img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="" />MetaThink AI
+      <a class="bank-brand logo" href="/" aria-label="WizPractice 智练">
+        <img class="logo-img" src="{{ url_for('static', filename='wizpractice-mark.svg') }}" alt="" /><span class="brand-wordmark">WizPractice<small>智练</small></span>
       </a>
       <nav class="bank-navigation" aria-label="Main navigation">
         <button id="nav-library" class="bank-nav active" type="button" aria-current="page">
@@ -181,13 +204,13 @@
           <span data-group-i18n="groups">小组</span>
         </button>
       </nav>
-      <div class="bank-sidebar-bottom"><a class="bank-nav bank-profile-link" href="/profile" aria-label="个人中心"><span class="bank-profile-avatar" id="bank-profile-avatar" aria-hidden="true">{{ (auth.username[:1] if auth.username else "U")|upper }}</span><span class="bank-profile-label"><span data-bank-i18n="profile">个人中心</span><small id="bank-profile-name">{{ auth.username or "" }}</small></span><span class="bank-profile-arrow" aria-hidden="true">›</span></a><p>Meta Think AI &amp; STEAM Lab @ XJTLU</p></div>
+      <div class="bank-sidebar-bottom"><a class="bank-nav bank-profile-link" href="/profile" aria-label="个人中心"><span class="bank-profile-avatar" id="bank-profile-avatar" aria-hidden="true">{{ (auth.username[:1] if auth.username else "U")|upper }}</span><span class="bank-profile-label"><span data-bank-i18n="profile">个人中心</span><small id="bank-profile-name">{{ auth.username or "" }}</small></span><span class="bank-profile-arrow" aria-hidden="true">›</span></a><p>WizPractice &amp; STEAM Lab @ XJTLU</p></div>
     </aside>
     <div class="bank-workspace">
     <header class="topbar">
       <div class="logo">
-        <img class="logo-img" src="{{ url_for('static', filename='metathink-logo.png') }}" alt="MetaThink AI logo" />
-        MetaThink AI
+        <img class="logo-img" src="{{ url_for('static', filename='wizpractice-mark.svg') }}" alt="" />
+        <span class="brand-wordmark">WizPractice<small>智练</small></span>
       </div>
       <div class="topbar-right">
         <button id="theme-toggle-btn" class="topbar-icon-btn theme-toggle-btn" type="button" aria-label="Switch color theme" title="Switch color theme">☾</button>
@@ -604,11 +627,14 @@
 <!-- Outside animated workspace containers so fixed notices use the viewport. -->
 <div id="exam-message" class="bank-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 <div id="group-message" class="bank-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-<script src="{{ url_for('static', filename='app.js') }}?v=roles-20261016-interactive"></script>
-<script src="{{ url_for('static', filename='auth-roles.js') }}?v=roles-20261016-flow-4"></script>
+<script src="{{ url_for('static', filename='vendor/katex-0.19.0/katex.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/katex-0.19.0/auto-render.min.js') }}"></script>
+<script src="{{ url_for('static', filename='math-content.js') }}?v=math-20261020"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=wizpractice-20261020"></script>
+<script src="{{ url_for('static', filename='auth-roles.js') }}?v=wizpractice-20261020"></script>
 <script src="{{ url_for('static', filename='auth-recovery.js') }}?v=roles-20261016-interactive"></script>
-<script src="{{ url_for('static', filename='question-bank.js') }}?v=roles-20261016-interactive"></script>
-<script src="{{ url_for('static', filename='exams.js') }}?v=roles-20261016-interactive"></script>
+<script src="{{ url_for('static', filename='question-bank.js') }}?v=math-20261020"></script>
+<script src="{{ url_for('static', filename='exams.js') }}?v=math-20261020"></script>
 <script src="{{ url_for('static', filename='groups.js') }}?v=roles-20261016-interactive"></script>
 </body>
 </html>

@@ -104,12 +104,21 @@ body.auth-choosing #auth-screen { justify-content:flex-start; padding-top:clamp(
 .auth-role-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; }
 .auth-role-card { position:relative; display:flex; flex-direction:column; min-height:570px; padding:38px 30px 32px; border:1px solid #dfe6f3; border-radius:24px; background:linear-gradient(150deg,#f6f8ff 0,#fff 36%,#fff 80%,#fafbff); box-shadow:0 12px 36px #3a548309; transition:transform 220ms ease,box-shadow 220ms ease,border-color 220ms ease; }
 .auth-role-card.student { background:linear-gradient(150deg,#f2f8f6 0,#fff 36%,#fff 80%,#f9fcfb); }
-.auth-role-mascot { position:absolute; width:164px; height:164px; top:18px; right:12px; object-fit:contain; pointer-events:none; user-select:none; filter:drop-shadow(0 5px 7px #45618d0d); transform-origin:center 85%; transition:transform 280ms ease; }
+.auth-role-visual { position:absolute; width:158px; height:158px; top:20px; right:18px; color:#6d8dcc; pointer-events:none; user-select:none; }
+.student .auth-role-visual { color:#6c9e91; }
+.auth-role-visual .visual-halo { fill:currentColor; opacity:.045; }
+.auth-role-visual .visual-grid { stroke:currentColor; stroke-width:1; opacity:.12; }
+.auth-role-visual .visual-page { fill:#fff; stroke:currentColor; stroke-width:1.1; stroke-opacity:.3; }
+.auth-role-visual .visual-rule { stroke:currentColor; stroke-width:2; stroke-linecap:round; opacity:.32; }
+.auth-role-visual .visual-tint { fill:currentColor; fill-opacity:.11; stroke:currentColor; stroke-opacity:.16; }
+.auth-role-visual .visual-stroke { stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.auth-role-visual .visual-bars { stroke:currentColor; stroke-width:5; stroke-linecap:round; opacity:.6; transition:opacity 220ms ease; }
+.auth-role-visual .visual-route { stroke:currentColor; stroke-width:1.4; stroke-dasharray:3 4; opacity:.5; }
+.auth-role-visual .visual-dot { fill:currentColor; opacity:.45; }
+.auth-role-card:is(:hover,:focus-within) .visual-bars { opacity:1; }
 .auth-role-card::before { content:''; position:absolute; top:0; left:28px; right:28px; height:3px; border-radius:0 0 4px 4px; background:#7898ee; }
 .auth-role-card.student::before { background:#86b9b1; }
 .auth-role-card:hover,.auth-role-card:focus-within { transform:translateY(-4px); border-color:#b9cbef; box-shadow:0 20px 48px #3a548317; }
-.auth-role-card:is(:hover,:focus-within) .auth-role-mascot { transform:translateY(-3px) rotate(1deg); }
-.auth-role-card.student:is(:hover,:focus-within) .auth-role-mascot { transform:translateY(-3px) rotate(-1deg); }
 .auth-role-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:#eef3ff; color:#4165ba; font-size:27px; }
 .student .auth-role-icon { background:#edf6f3; color:#478578; }
 .auth-role-kicker { display:block; margin:32px 0 10px; color:#8191ac; font-size:10px; letter-spacing:.16em; }
@@ -143,7 +152,7 @@ body.auth-choosing #auth-screen { justify-content:flex-start; padding-top:clamp(
 .auth-role-toolbar button { padding:4px 0; border:0; background:none; color:#617696; cursor:pointer; font:inherit; font-size:12px; }
 .auth-role-badge,.account-role-badge { padding:4px 9px; border-radius:20px; background:#edf3ff; color:#4264a8; font-size:11px; white-space:nowrap; }
 .account-role-badge:empty { display:none; }
-@media(max-width:760px) { .auth-role-mascot { width:132px; height:140px; top:16px; right:16px; } .auth-role-card h2 { max-width:calc(100% - 130px); } }
+@media(max-width:760px) { .auth-role-visual { width:132px; height:140px; top:16px; right:16px; } .auth-role-card h2 { max-width:calc(100% - 130px); } }
 @media(max-width:760px) { .auth-role-cards { grid-template-columns:1fr; gap:16px; } .auth-role-card { padding:24px; } .auth-role-kicker { margin-top:16px; } .auth-role-card p { min-height:0; } .auth-role-card ul { padding-bottom:16px; } .auth-role-heading { margin-bottom:22px; } }
 /* Let long recovery/registration forms scroll without shrinking into clipped cards. */
 #auth-screen .auth-shell,#auth-screen .auth-footer-credit { flex-shrink:0; }

@@ -41,10 +41,10 @@ class SMTPMailer:
         sender = normalize_email(env.get('SMTP_FROM') or env['SMTP_USER'])
         recipient = normalize_email(recipient); validate_email(recipient)
         message = EmailMessage()
-        message['Subject'] = 'MetaThink AI 密码重置验证码'
-        message['From'] = formataddr(('MetaThink AI', sender))
+        message['Subject'] = '智练 WizPractice 密码重置验证码'
+        message['From'] = formataddr(('智练 WizPractice', sender))
         message['To'] = recipient
-        message.set_content(f'你正在重置 MetaThink AI 账号密码。\n\n验证码：{code}\n\n验证码 10 分钟内有效，请勿转发或告诉任何人。\n如果不是你本人操作，请忽略此邮件；你的密码不会因此改变。')
+        message.set_content(f'你正在重置智练 WizPractice 账号密码。\n\n验证码：{code}\n\n验证码 10 分钟内有效，请勿转发或告诉任何人。\n如果不是你本人操作，请忽略此邮件；你的密码不会因此改变。')
         context = ssl.create_default_context()
         host = env.get('SMTP_HOST') or 'smtp.qq.com'
         security = env.get('SMTP_SECURITY', 'ssl').lower()

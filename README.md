@@ -1,4 +1,4 @@
-# Local Chat Site
+# WizPractice · 智练
 
 A Flask-based local RAG study assistant. It lets users upload course materials, build a local FAISS knowledge base, chat with the uploaded documents, generate practice questions, grade answers, and manage past exam materials.
 
@@ -178,6 +178,8 @@ MYSQL_PASSWORD=change_this_password
 
 ## Notes
 
+- PDF export uses the project-local `local_chat_site/fonts/NotoSansSC-Regular.ttf` (SIL OFL 1.1) and embeds a subset in every PDF. Include the entire `fonts/` directory when deploying; no Windows/Linux system fonts or server-side font installation is needed. The path is resolved relative to the module, not the working directory. A missing or unreadable font reports an export error rather than silently producing Chinese black boxes. See `local_chat_site/fonts/README.md` for source, license and reproducible build details.
+- Mathematical content uses the bundled KaTeX 0.19.0 engine and fonts (no CDN): `\(...\)` / `$...$` for inline formulas and `\[...\]` / `$$...$$` for display formulas. Existing question sets, choices, grading feedback, explanations, exams and history render on display without regenerating questions. Editing fields keep the original LaTeX; saved answers and AI grading are unchanged. Unsupported or malformed formulas fall back to literal text. This applies to browser display, not PDF export.
 - OCR requires Tesseract to be installed separately and configured through `TESSERACT_CMD` or your system `PATH`.
 - MySQL is optional for basic local use, but database-backed exam/chat history requires the `MYSQL_*` settings above.
 - Do not commit `.env`, uploaded materials, vector indexes, logs, or cached literature files.
