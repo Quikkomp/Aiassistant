@@ -1177,6 +1177,10 @@ class RagAgent:
     - The user's explicit requested type, count (clamped to 1–50), difficulty and scope override these defaults. Use defaults only for unspecified fields.
     - Label EVERY question with its actual type, e.g. Q1 [multiple_choice], Q2 [fill_blank], Q3 [short_answer].
     - Do NOT provide answers or solutions, only the questions themselves.
+    - Clearly separate GIVEN conditions from the UNKNOWN being tested. Never ask a student to fill a value/term that the stem already explicitly supplies.
+    - For numerical questions, ask for a meaningful derived quantity; e.g. radius 3 -> quarter-circle area ____, NOT radius 3 -> fill the radius in the area formula.
+    - Ensure sufficient stated conditions, correct formulas/units, and a determinate answer for every objective blank. Do not reference an absent diagram.
+    - Each multiple-choice question must have exactly one correct option. Short-answer questions must have assessable marking points, but may allow equivalent wording/examples.
     - Use clear numbering: Q1, Q2, Q3, ...
     - When possible, generate questions that are similar in style and difficulty
       to the past exam questions provided, but do NOT copy them verbatim.
@@ -1194,9 +1198,11 @@ class RagAgent:
     {combined_context}
     """
 
+        from question_quality import QuestionQualityError, generate_reviewed_questions
+
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+            content = generate_reviewed_questions(
+                self.client,
                 messages=[
                     {
                         "role": "system",
@@ -1204,18 +1210,34 @@ class RagAgent:
                             "You generate high-quality final-exam practice questions "
                             "based strictly on the given course materials or past exam questions. "
                             "Use the user's language unless a different language is explicitly requested. "
-                            "Never include answers unless explicitly asked."
+                            "Never include answers, solutions or review notes in student questions. "
+                            "Do not reveal a requested unknown as a given condition."
                         ),
                     },
                     {"role": "user", "content": prompt},
                 ],
+                review_scope={
+                    "instruction": query, "default_count": n,
+                    "default_types": selected_types, "default_difficulty": difficulty_key,
+                    "source_policy": (
+                        "Selected past questions define the factual scope; generate new related problems."
+                        if exam_only_mode else
+                        "Only selected course materials are factual sources; paper templates define STYLE ONLY."
+                        if style_template_only or selected_docs else
+                        "Use supplied study text, or established knowledge if only a topic is supplied."
+                    ),
+                    "course_context": combined_context,
+                    "style_blueprint": template_blueprint,
+                },
             )
-            content = response.choices[0].message.content
             # 出题日志（可选）
             self.log_question(f"[Question Generation] {query}", content)
             return content
+        except QuestionQualityError as exc:
+            return f"❌ {exc}"
         except Exception as e:
-            return f"❌ Failed to generate questions: {e}"
+            print(f"Question generation failed ({type(e).__name__})")
+            return "❌ 出题或审题服务暂时不可用，本次未保存题目，请稍后重试。"
 
 
     def grade_answer(self,

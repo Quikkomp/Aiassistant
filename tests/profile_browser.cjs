@@ -54,6 +54,7 @@ const server = http.createServer(async (req,res) => {
     await page.goto('http://127.0.0.1:'+server.address().port+'/profile');
     await page.waitForFunction(()=>document.querySelector('#profile-info-username').textContent==='Student');
     assert.equal(await page.locator('#profile-info-view').isVisible(),true);
+    assert.equal(await page.locator('.bank-sidebar-bottom > p').textContent(),'MetaThink AI & STEAM Lab@XJTLU');
     assert.equal(await page.locator('#profile-security-view').isVisible(),false);
     await capture('profile-info-desktop.png');
     await page.locator('.profile-navigation [data-profile-view="history"]').click();

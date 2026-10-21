@@ -112,7 +112,11 @@ class GenerationTests(unittest.TestCase):
         calls = []
         def complete(**kwargs):
             calls.append(kwargs)
-            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=REPLY))])
+            content = json.dumps({"questions": [
+                {"index": i, "valid": True, "issues": [], "reason": "", "reference_answer": "Internal marking points"}
+                for i in (1, 2)
+            ]}) if kwargs.get("response_format") else REPLY
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
         doc = SimpleNamespace(metadata={"source": "lecture.txt"}, page_content="KNOWLEDGE_ONLY: water freezes at zero Celsius.")
         agent = SimpleNamespace(db=SimpleNamespace(similarity_search_with_score=lambda *a, **k: [(doc, 0.1)]),
             client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=complete))),
@@ -126,6 +130,10 @@ class GenerationTests(unittest.TestCase):
         source_part = prompt.split("[Source materials]", 1)[1]
         self.assertIn("KNOWLEDGE_ONLY", source_part)
         self.assertNotIn("TEMPLATE_ONLY", source_part)
+        review = json.loads(calls[1]["messages"][1]["content"])
+        self.assertIn("STYLE ONLY", review["requirements_and_permitted_context"]["source_policy"])
+        self.assertNotIn("TEMPLATE_ONLY", review["requirements_and_permitted_context"]["course_context"])
+        self.assertEqual(len(review["questions"]), 2)
         self.assertEqual(scope["generate_questions"](agent, "Generate 2 math questions", "fill_blank"), REPLY)
 
 

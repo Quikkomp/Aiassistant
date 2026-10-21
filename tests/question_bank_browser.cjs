@@ -79,6 +79,8 @@ const server = http.createServer(async (req, res) => {
     assert.equal(await page.locator('#nav-library .bank-nav-icon').evaluate(icon=>getComputedStyle(icon).color),'rgb(65, 109, 245)');
     assert.equal(await page.locator('.bank-navigation a[href="/profile"]').count(), 0);
     assert.equal(await page.locator('.bank-sidebar-bottom a[href="/profile"]').isVisible(), true);
+    assert.equal(await page.locator('.bank-sidebar-bottom > p').textContent(), 'MetaThink AI & STEAM Lab@XJTLU');
+    assert.equal(await page.locator('.auth-footer-credit').textContent(), 'MetaThink AI & STEAM Lab@XJTLU');
     assert.ok(await page.locator('.bank-profile-link').evaluate(el=>el.getBoundingClientRect().top > innerHeight * .7));
     await page.screenshot({ path: path.join(out, 'library-desktop.png'), fullPage: true });
     await page.locator('#create-bank-btn').click();
@@ -127,6 +129,8 @@ const server = http.createServer(async (req, res) => {
     const started=new Promise(resolve=>generationStarted=resolve);
     await page.locator('#send-btn').click();await started;
     await page.locator('#creator-generation-overlay').waitFor({state:'visible'});
+    assert.equal(await page.locator('[data-bank-i18n="generatingTitle"]').innerText(),'正在生成并审题');
+    assert.ok((await page.locator('[data-bank-i18n="generatingHint"]').innerText()).includes('通过后才会保存'));
     assert.equal(await page.locator('#create-bank-dialog').getAttribute('aria-busy'),'true');
     assert.equal(await page.locator('#creator-dialog-scroll').evaluate(el=>el.inert),true);
     assert.equal(await page.locator('#close-creator-btn').isDisabled(),true);
@@ -206,6 +210,7 @@ const server = http.createServer(async (req, res) => {
     await page.locator('.feedback-tools .ask-ai-btn').click();
     assert.equal(await page.locator('#question-qa-panel').isVisible(), true);
     await page.locator('#scenario-entry-btn').click();
+    await page.locator('#scenario-modal').waitFor({state:'visible'});
     assert.equal(await page.locator('#scenario-modal').isVisible(), true);
     await page.locator('#scenario-close-btn').click();
     if (!(await page.locator('.understand-row').isVisible())) await page.locator('.feedback-tools > summary').click();

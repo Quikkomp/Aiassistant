@@ -43,8 +43,8 @@
     promptExam: ["考前复习 · 10 道混合题", "Review · 10 mixed"],
     promptChallenge: ["深入理解 · 5 道简答", "Analysis · 5 answers"],
     creatorFootnote: ["生成后自动保存到个人题库，可随时继续作答。", "Automatically saved to your personal library, ready to practise anytime."],
-    generatingTitle: ["正在生成题目", "Generating your questions"],
-    generatingHint: ["请稍候，完成后会自动保存到题库。", "Please wait. Your question set will be saved automatically."],
+    generatingTitle: ["正在生成并审题", "Generating and reviewing questions"],
+    generatingHint: ["正在生成并核验题目；不合格时会自动重试，通过后才会保存。", "Questions are generated and reviewed. Failed drafts are retried; only approved sets are saved."],
   };
   const text = key => words[key]?.[zh() ? 0 : 1] || key;
   const say = (message, error = false, where = "creator-message") => {

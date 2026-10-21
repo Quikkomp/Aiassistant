@@ -178,7 +178,7 @@
         </div>
       </aside>
     </div>
-    <div class="auth-footer-credit">WizPractice &amp; STEAM Lab @ XJTLU</div>
+    <div class="auth-footer-credit">MetaThink AI &amp; STEAM Lab@XJTLU</div>
   </section>
 
   <div class="page bank-app {% if not auth.authenticated %}app-hidden{% endif %}">
@@ -204,7 +204,7 @@
           <span data-group-i18n="groups">小组</span>
         </button>
       </nav>
-      <div class="bank-sidebar-bottom"><a class="bank-nav bank-profile-link" href="/profile" aria-label="个人中心"><span class="bank-profile-avatar" id="bank-profile-avatar" aria-hidden="true">{{ (auth.username[:1] if auth.username else "U")|upper }}</span><span class="bank-profile-label"><span data-bank-i18n="profile">个人中心</span><small id="bank-profile-name">{{ auth.username or "" }}</small></span><span class="bank-profile-arrow" aria-hidden="true">›</span></a><p>WizPractice &amp; STEAM Lab @ XJTLU</p></div>
+      <div class="bank-sidebar-bottom"><a class="bank-nav bank-profile-link" href="/profile" aria-label="个人中心"><span class="bank-profile-avatar" id="bank-profile-avatar" aria-hidden="true">{{ (auth.username[:1] if auth.username else "U")|upper }}</span><span class="bank-profile-label"><span data-bank-i18n="profile">个人中心</span><small id="bank-profile-name">{{ auth.username or "" }}</small></span><span class="bank-profile-arrow" aria-hidden="true">›</span></a><p>MetaThink AI &amp; STEAM Lab@XJTLU</p></div>
     </aside>
     <div class="bank-workspace">
     <header class="topbar">
@@ -485,8 +485,8 @@
           </svg>
           <span class="creator-generation-shadow"></span>
         </div>
-        <strong data-bank-i18n="generatingTitle">正在生成题目</strong>
-        <p data-bank-i18n="generatingHint">请稍候，完成后会自动保存到题库。</p>
+        <strong data-bank-i18n="generatingTitle">正在生成并审题</strong>
+        <p data-bank-i18n="generatingHint">正在生成并核验题目；不合格时会自动重试，通过后才会保存。</p>
         <span class="creator-generation-dots" aria-hidden="true"><i></i><i></i><i></i></span>
       </div>
     </div>
@@ -633,7 +633,7 @@
 <script src="{{ url_for('static', filename='app.js') }}?v=wizpractice-20261020"></script>
 <script src="{{ url_for('static', filename='auth-roles.js') }}?v=wizpractice-20261020"></script>
 <script src="{{ url_for('static', filename='auth-recovery.js') }}?v=roles-20261016-interactive"></script>
-<script src="{{ url_for('static', filename='question-bank.js') }}?v=math-20261020"></script>
+<script src="{{ url_for('static', filename='question-bank.js') }}?v=quality-20261021"></script>
 <script src="{{ url_for('static', filename='exams.js') }}?v=math-20261020"></script>
 <script src="{{ url_for('static', filename='groups.js') }}?v=roles-20261016-interactive"></script>
 </body>

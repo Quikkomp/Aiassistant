@@ -1,9 +1,12 @@
 # WizPractice / 智练
 
 The public English platform name is **WizPractice**; the Chinese name is **智练**.
-The bilingual wordmark, page titles, footer credits, authentication copy and
+The bilingual wordmark, page titles, authentication copy and
 password-recovery email use this identity. Existing account data, repository
 names and private database identifiers are not renamed.
+
+The laboratory credit is **MetaThink AI & STEAM Lab@XJTLU**, distinct from the
+platform name. Sign-in, workspace and profile footer credits use this exact name.
 
 The code-native `local_chat_site/static/wizpractice-mark.svg` follows the supplied
 reference: a blue rounded square, a white wizard hat and two small star glints.
