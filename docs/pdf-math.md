@@ -61,9 +61,19 @@ formulas fail instead of generating giant or unreadably small images. Ordinary
 questions stay intact across page boundaries; very long questions may split
 with repeated headings. Fraction heights expand line spacing.
 
+Mixed text/formula paragraphs use ReportLab's image-aware word breaker. Its
+CJK-only breaker can call `ord('')` on an inline-image fragment at an English
+line boundary, causing `TypeError` (reproduced on ReportLab 4.2.5). The export
+uses a derived paragraph style for formulas, with long-word splitting for
+unspaced Chinese runs, without changing the shared/plain-text CJK style.
+
 `tests/test_pdf_math.py` covers the reported calculus examples, image embedding,
 Chinese text, delimiters, literal code/prices/HTML, malformed/unsupported input,
 per-export caching/limits, parallel rendering, pagination, and the real endpoint
 using an isolated Flask fixture. No production database, email or paid AI is used.
-The full regression suite also passes with ReportLab 4.2.5 and Matplotlib 3.10.8
-(105 passed, one skipped); this matches the server's ReportLab version.
+The regression suite is run with ReportLab 4.2.5 and Matplotlib 3.10.8,
+matching the server's ReportLab version. Line-boundary coverage includes English,
+Chinese and mixed prose with inline images at three available widths, plus a
+ten-question English fill-in-the-blank export. Unexpected failures log only the
+exception type and stack function/line locations, never question content,
+exception messages, source lines or generated image payloads.

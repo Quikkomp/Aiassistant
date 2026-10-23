@@ -6,7 +6,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "local_chat_site"))
@@ -47,6 +47,18 @@ $$\int_0^1\frac{x^2}{\sqrt{1+x^2}}\,dx$$
 中文符号测试：\(S_{\text{面积}}=\frac{1}{4}\pi r^2\)。"""},
 ]
 
+ENGLISH_BLANK = (
+    "Q1 [fill_blank]\n"
+    r"If the function \(f(x)=ax^2+bx+c\) has its vertex at the point "
+    r"\((h,k)\), then \(h\) can be expressed as \(h=\frac{-b}{\_\_\_\_}\)."
+)
+# 16 words put the formula exactly across an A4 content-line boundary in
+# ReportLab 4.2.5: its CJK breaker previously raised ord('') -> TypeError.
+INLINE_WRAP_REPRO = (
+    "word " * 16 + r"\(h=\frac{-b}{\_\_\_\_}\)"
+    + " words following the equation " * 3
+)
+
 
 class MathSegmentsTests(unittest.TestCase):
     def test_delimiters_code_currency_and_literal_markup(self):
@@ -64,6 +76,43 @@ class MathSegmentsTests(unittest.TestCase):
 @unittest.skipUnless(importlib.util.find_spec("matplotlib") and importlib.util.find_spec("reportlab"),
                      "Install requirements-pdf.txt to test PDF math")
 class MathPDFTests(unittest.TestCase):
+    def test_english_inline_images_crossing_line_boundary_do_not_use_cjk_breaker(self):
+        from reportlab.lib.styles import ParagraphStyle
+        from pdf_fonts import get_pdf_font_name
+        style = ParagraphStyle("CJKImageRepro", fontName=get_pdf_font_name(), fontSize=10.5,
+                               leading=16, autoLeading="max", wordWrap="CJK")
+        renderer = MathParagraphRenderer()
+        for width in (477.228, 400, 200):
+            for length in (1, 12, 15, 16, 17, 20, 30, 50):
+                texts = [
+                    "word " * length + r"\(h=\frac{-b}{\_\_\_\_}\)" + " following words " * 10,
+                    r"\(x^2+bx+c\)" + "word " * length + r"\(\frac{-b}{2a}\)",
+                    "a" * length + r"\(\frac{-b}{2a}\)" + "a" * 60,
+                    "这是一个中英文混排的分式填空题，" * length + r"\(h=\frac{-b}{\_\_\_\_}\)" + "说明理由。",
+                ]
+                for text in texts:
+                    with self.subTest(width=width, length=length, prefix=text[:20]):
+                        paragraph = renderer.paragraph(text, style, width)
+                        _, height = paragraph.wrap(width, 700)
+                        self.assertGreater(height, 0)
+                        self.assertEqual(paragraph.style.wordWrap, "LTR")
+                        self.assertEqual(style.wordWrap, "CJK", "Do not mutate the caller's style")
+        plain = renderer.paragraph("纯中文题目，没有公式。", style, 400)
+        self.assertIs(plain.style, style)
+
+    def test_ten_english_fill_blank_questions_export_and_paginate(self):
+        from pypdf import PdfReader
+        questions = [ENGLISH_BLANK, INLINE_WRAP_REPRO] * 5
+        original = list(questions)
+        reader = PdfReader(actual_builder()(questions, title="English fill-in-the-blank regression"))
+        text = "\n".join(page.extract_text() for page in reader.pages)
+        self.assertGreater(len(reader.pages), 1)
+        self.assertIn("Total: 10 questions", text)
+        self.assertIn("vertex at the point", text)
+        self.assertIn("Q10", text)
+        self.assertNotIn(r"\frac", text)
+        self.assertEqual(questions, original)
+
     def test_calculus_pdf_contains_images_instead_of_raw_latex_and_preserves_input(self):
         from pypdf import PdfReader
         original = copy.deepcopy(SAMPLE_QUESTIONS)
@@ -135,6 +184,9 @@ class MathPDFTests(unittest.TestCase):
         response = client.post("/api/export_questions_pdf", json={"questions": [SAMPLE_QUESTIONS[3]], "title": "积分试卷"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/pdf")
+        response = client.post("/api/export_questions_pdf", json={"questions": [ENGLISH_BLANK, INLINE_WRAP_REPRO] * 5})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/pdf")
         response = client.post("/api/export_questions_pdf", json={"questions": [r"\(\badcommand{x}\)"]})
         self.assertEqual(response.status_code, 400)
         self.assertIn("第 1 题", response.json["msg"])
@@ -142,6 +194,15 @@ class MathPDFTests(unittest.TestCase):
             response = client.post("/api/export_questions_pdf", json={"questions": [r"\(x\)"]})
         self.assertEqual(response.status_code, 500)
         self.assertIn("requirements-pdf.txt", response.json["msg"])
+        with patch.dict(namespace, {"_build_questions_pdf": Mock(side_effect=TypeError("PRIVATE_FORMULA_DO_NOT_LOG"))}):
+            with self.assertLogs(app.logger, level="WARNING") as logs:
+                response = client.post("/api/export_questions_pdf", json={"questions": ["Private question"]})
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("内部错误", response.json["msg"])
+        self.assertNotIn("缩短题目", response.json["msg"])
+        self.assertIn("frames=", "\n".join(logs.output))
+        self.assertNotIn("PRIVATE_FORMULA_DO_NOT_LOG", "\n".join(logs.output))
+        self.assertNotIn("Private question", "\n".join(logs.output))
 
 
 if __name__ == "__main__":

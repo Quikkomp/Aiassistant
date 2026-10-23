@@ -1041,8 +1041,12 @@ def export_questions_pdf():
     except RuntimeError as exc:
         return jsonify({"ok": False, "msg": str(exc)}), 500
     except Exception as exc:
-        app.logger.warning("PDF export failed (%s)", type(exc).__name__)
-        return jsonify({"ok": False, "msg": "PDF 排版失败，请缩短题目或将过长公式分行后重试。"}), 500
+        from traceback import extract_tb
+        # Log locations only, never question text, image payloads, source lines
+        # or exception messages that may contain private exported content.
+        locations = " > ".join(f"{frame.name}:{frame.lineno}" for frame in extract_tb(exc.__traceback__)[-8:])
+        app.logger.warning("PDF export failed (%s); frames=%s", type(exc).__name__, locations)
+        return jsonify({"ok": False, "msg": "PDF 排版遇到内部错误，请重试；若持续失败，请联系管理员查看导出日志。"}), 500
 
 
 @app.route("/api/qa", methods=["POST"])

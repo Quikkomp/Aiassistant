@@ -147,8 +147,10 @@ class MathParagraphRenderer:
         self._pixels = 0
 
     def paragraph(self, text, style, max_width):
+        from reportlab.lib.styles import ParagraphStyle
         from reportlab.platypus import Paragraph
         markup = []
+        contains_math = False
         for kind, source, display in math_segments(text):
             if kind != "math":
                 if kind == "plain" and re.search(r"\\[\[(]|\\begin\{", source):
@@ -156,6 +158,7 @@ class MathParagraphRenderer:
                 markup.append(escape(source).replace("\n", "<br/>"))
                 continue
             self._count += 1
+            contains_math = True
             if self._count > MAX_FORMULAS:
                 raise ValueError("本次导出的公式过多，请分批导出。")
             key = (source, style.fontSize, max_width)
@@ -171,4 +174,14 @@ class MathParagraphRenderer:
             markup.append(f'<img src="{uri}" width="{width:.3f}" height="{height:.3f}" valign="{-baseline:.3f}"/>')
             if display:
                 markup.append("<br/>")
+        if contains_math:
+            # ReportLab's CJK breaker calls ord() on empty inline-image
+            # fragments when an image overflows a line or English backtracking
+            # crosses it. Use its image-aware word breaker for mixed content.
+            # Long Chinese runs can still wrap, and the caller's shared style
+            # must not change for other paragraphs or simultaneous exports.
+            style = ParagraphStyle(
+                style.name + "MathImages", parent=style, wordWrap="LTR",
+                splitLongWords=1, autoLeading="max",
+            )
         return Paragraph("".join(markup), style)
