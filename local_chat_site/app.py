@@ -474,6 +474,10 @@ def _format_export_question_type(question_type: str) -> str:
 
 
 def _build_questions_pdf(questions, title="Generated Practice Paper"):
+    if not isinstance(questions, list) or not 1 <= len(questions) <= 50:
+        raise ValueError("请每次导出 1-50 道题目。")
+    if not isinstance(title, str) or len(title) > 200:
+        raise ValueError("试卷标题过长。")
     try:
         from io import BytesIO
         from html import escape
@@ -487,9 +491,11 @@ def _build_questions_pdf(questions, title="Generated Practice Paper"):
         raise RuntimeError("PDF dependency is missing. Please install reportlab first.") from exc
 
     from pdf_fonts import get_pdf_font_name
+    from pdf_math import MathParagraphRenderer
 
     buffer = BytesIO()
     font_name = get_pdf_font_name()
+    math_renderer = MathParagraphRenderer()
     bold_font_name = font_name
 
     doc = SimpleDocTemplate(
@@ -527,6 +533,8 @@ def _build_questions_pdf(questions, title="Generated Practice Paper"):
         fontName=font_name,
         fontSize=10.5,
         leading=16,
+        autoLeading="max",
+        wordWrap="CJK",
         spaceAfter=8,
     )
     type_style = ParagraphStyle(
@@ -548,9 +556,14 @@ def _build_questions_pdf(questions, title="Generated Practice Paper"):
             q_type = ""
         if not text:
             continue
+        if len(text) > 20000:
+            raise ValueError("单道题目内容过长，请分批导出。")
         if not q_type:
             q_type = _infer_export_question_type(text)
         clean_questions.append({"text": text, "question_type": q_type})
+
+    if not clean_questions or sum(len(item["text"]) for item in clean_questions) > 100000:
+        raise ValueError("题目为空或内容过长，请分批导出。")
 
     type_counts = Counter(item["question_type"] for item in clean_questions)
     type_summary = " / ".join(
@@ -569,14 +582,19 @@ def _build_questions_pdf(questions, title="Generated Practice Paper"):
 
     for idx, item in enumerate(clean_questions, start=1):
         label = f"Q{idx}  [{_format_export_question_type(item['question_type'])}]"
-        text = escape(item["text"]).replace("\n", "<br/>")
+        try:
+            content = math_renderer.paragraph(item["text"], question_style, doc.width - 16)
+        except ValueError as exc:
+            raise ValueError(f"第 {idx} 题：{exc}") from exc
         table = Table(
             [
                 [Paragraph(escape(label), type_style)],
-                [Paragraph(text, question_style)],
+                [content],
             ],
             colWidths=[doc.width],
             hAlign="LEFT",
+            repeatRows=1,
+            splitInRow=1,
         )
         table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef6ff")),
@@ -587,6 +605,10 @@ def _build_questions_pdf(questions, title="Generated Practice Paper"):
             ("TOPPADDING", (0, 0), (-1, -1), 7),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
         ]))
+        # Move an ordinary question intact to the next page. Only a question
+        # taller than a full page may split its body, repeating its label.
+        if table.wrap(doc.width, doc.height)[1] <= doc.height - 12:
+            table.splitInRow = 0
         story.append(table)
         story.append(Spacer(1, 8))
 
@@ -995,8 +1017,13 @@ def question_sets_progress(bank_id):
 @app.route("/api/export_questions_pdf", methods=["POST"])
 def export_questions_pdf():
     data = request.get_json(force=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "msg": "导出请求格式不正确。"}), 400
     questions = data.get("questions") or []
-    title = (data.get("title") or "Generated Practice Paper").strip()
+    title = data.get("title") or "Generated Practice Paper"
+    if not isinstance(title, str):
+        return jsonify({"ok": False, "msg": "试卷标题必须是文本。"}), 400
+    title = title.strip()
 
     if not isinstance(questions, list) or not questions:
         return jsonify({"ok": False, "msg": "No questions were provided."}), 400
@@ -1009,8 +1036,13 @@ def export_questions_pdf():
             as_attachment=True,
             download_name="practice_paper.pdf",
         )
-    except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)}), 500
+    except ValueError as exc:
+        return jsonify({"ok": False, "msg": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "msg": str(exc)}), 500
+    except Exception as exc:
+        app.logger.warning("PDF export failed (%s)", type(exc).__name__)
+        return jsonify({"ok": False, "msg": "PDF 排版失败，请缩短题目或将过长公式分行后重试。"}), 500
 
 
 @app.route("/api/qa", methods=["POST"])

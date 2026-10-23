@@ -1,0 +1,3 @@
+# Optional PDF export dependencies; Python >= 3.10, no TeX/Node/Chromium needed.
+reportlab==4.2.5
+matplotlib==3.10.8
