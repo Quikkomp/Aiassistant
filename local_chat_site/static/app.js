@@ -70,8 +70,6 @@ const I18N = {
     "question_x": "? {a} ? / ? {b} ?",
     "your_answer": "????",
     "submit": "??",
-    "got_it": "????",
-    "i_dont_understand": "?????",
     "detailed_explain": "????",
     "ask_ai": "? AI",
     "followup_title": "???????",
@@ -148,8 +146,6 @@ const I18N = {
     "question_x": "Question {a} / {b}",
     "your_answer": "Your Answer",
     "submit": "Submit",
-    "got_it": "Got it",
-    "i_dont_understand": "I don't understand",
     "detailed_explain": "Detailed Explanation",
     "ask_ai": "Ask AI",
     "followup_title": "Follow-up Questions for This Problem",
@@ -243,8 +239,6 @@ const ZH_OVERRIDES = {
   question_x: "第 {a} 题 / 共 {b} 题",
   your_answer: "你的答案",
   submit: "提交",
-  got_it: "我理解了",
-  i_dont_understand: "我还不理解",
   detailed_explain: "详细讲解",
   ask_ai: "问 AI",
   followup_title: "继续追问这道题",
@@ -597,50 +591,13 @@ function setLanguage(lang) {
   updatePastExamTemplateUi();
   renderScoreChart();
   renderQuestionCard();
-  updateWorkspaceStatus();
   setTheme(document.body.classList.contains("dark-theme") ? "dark" : "light");
   window.bankUI?.translate();
   window.examUI?.translate();
   window.groupUI?.translate();
 }
 
-// ===== Workspace comfort controls (theme, mobile resources, live progress) =====
-function updateWorkspaceStatus() {
-  const readyStatus = document.getElementById("workspace-ready-status");
-  const readyDot = document.getElementById("workspace-ready-dot");
-  const progress = document.getElementById("practice-progress");
-  const typeSummary = document.getElementById("selected-type-summary");
-  const resourceBtn = document.getElementById("resource-toggle-btn");
-  const zh = currentLang === "zh";
-
-  const statusLabels = document.querySelectorAll(".workspace-status .status-label");
-  if (statusLabels[0]) statusLabels[0].textContent = zh ? "进度" : "Progress";
-  if (statusLabels[1]) statusLabels[1].textContent = zh ? "题型" : "Mode";
-
-  if (readyStatus) readyStatus.textContent = kbReady
-    ? (zh ? "学习空间已就绪" : "Workspace ready")
-    : (zh ? "资料库正在准备" : "Preparing materials");
-  if (readyDot) readyDot.classList.toggle("is-waiting", !kbReady);
-
-  if (progress) progress.textContent = questionList.length
-    ? (zh ? `第 ${currentQuestionIndex + 1} / ${questionList.length} 题` : `Question ${currentQuestionIndex + 1} of ${questionList.length}`)
-    : (zh ? "尚未生成题目" : "No questions yet");
-
-  if (typeSummary) {
-    const labels = {
-      fill_blank: zh ? "填空题" : "Fill-in-the-blank",
-      multiple_choice: zh ? "选择题" : "Multiple choice",
-      short_answer: zh ? "简答题" : "Short answer",
-    };
-    typeSummary.textContent = getSelectedQuestionTypes().map((type) => labels[type] || type).join(" · ");
-  }
-
-  if (resourceBtn) {
-    const label = resourceBtn.querySelector(".resource-toggle-text");
-    if (label) label.textContent = zh ? "资料库" : "Resources";
-    resourceBtn.title = zh ? "打开学习资料库" : "Open learning resources";
-  }
-}
+// ===== Workspace theme controls =====
 
 function setTheme(theme) {
   const dark = theme === "dark";
@@ -655,27 +612,12 @@ function setTheme(theme) {
   }
 }
 
-function initWorkspaceComfortControls() {
+function initThemeControls() {
   setTheme(localStorage.getItem(THEME_KEY) || "light");
-  updateWorkspaceStatus();
-
   const themeButton = document.getElementById("theme-toggle-btn");
   if (themeButton) themeButton.addEventListener("click", () => {
     setTheme(document.body.classList.contains("dark-theme") ? "light" : "dark");
   });
-
-  const resourceButton = document.getElementById("resource-toggle-btn");
-  if (resourceButton) resourceButton.addEventListener("click", () => {
-    const open = document.body.classList.toggle("resources-open");
-    resourceButton.setAttribute("aria-expanded", String(open));
-    if (open) document.querySelector(".right-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
-  document.querySelectorAll('input[name="question-type"], input[name="question-difficulty"], #question-count').forEach((control) => {
-    control.addEventListener("change", updateWorkspaceStatus);
-    control.addEventListener("input", updateWorkspaceStatus);
-  });
-
 }
 
 // Parse backend text (Q1, Q2, ...) into separate questions
@@ -848,21 +790,6 @@ function saveScoreHistory() {
 
 // 鏍规嵁鎵规敼鏂囨湰閲岀殑鈥滅粨鏋滐細...鈥濇帹鏂竴涓垎鏁?
 // 鏄犲皠瑙勫垯锛氭纭?100锛岄儴鍒嗘纭?60锛岄敊璇?0
-function mapFeedbackToScore(feedback) {
-  if (!feedback) return null;
-  const firstLine = String(feedback).split(/\r?\n/)[0] || "";
-
-  if (firstLine.includes("Partially correct")) {
-    return 60;
-  }
-  if (firstLine.includes("Correct")) {
-    return 100;
-  }
-  if (firstLine.includes("Incorrect") || firstLine.includes("Not correct") || firstLine.includes("Wrong")) {
-    return 0;
-  }
-  return null; // 鏃犳硶璇嗗埆灏变笉璁板叆鎶樼嚎鍥?
-}
 
 function computeRoundScoreFromEvaluations() {
   if (!questionList || questionList.length === 0) return null;
@@ -1183,9 +1110,6 @@ async function sendQaQuestion() {
 }
 
 
-
-
-
 function renderQuestionCard() {
   window.bankUI?.renderProgress();
   const container = document.getElementById("chat-window");
@@ -1322,7 +1246,7 @@ function renderQuestionCard() {
 
   // 猸?鎶娾€淕ot it / I don't understand / Detailed Explanation / Ask AI鈥?鏀惧湪鍚屼竴琛?
   const understandRow = document.createElement("div");
-  understandRow.className = "understand-row";
+  understandRow.className = "learning-tools-row";
   const makeActionGroup = (className, label, buttons) => {
     const group = document.createElement("div");
     group.className = `feedback-action-group ${className}`;
@@ -1503,7 +1427,6 @@ function renderQuestionCard() {
   updateScenarioEntry(idx);
 
 
-
   // 搴曢儴宸﹀彸瀵艰埅鎸夐挳
   const bottomPrevBtn = document.getElementById("exam-prev-btn");
   const bottomNextBtn = document.getElementById("exam-next-btn");
@@ -1530,7 +1453,6 @@ function renderQuestionCard() {
     };
   }
   setExportPdfButtonState();
-  updateWorkspaceStatus();
 }
 
 function isRoundComplete() {
@@ -1921,8 +1843,6 @@ function closeScenarioModal() {
 }
 
 
-
-
 // 猸?鍗曢鎵规敼锛氳皟鐢ㄥ悗绔?/api/grade
 async function gradeQuestion(idx, submitBtn, resultBox) {
   if (!questionList || !questionList[idx]) return;
@@ -2011,19 +1931,9 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
       }
 
       // 5锔忊儯 鎵规敼瀹屾垚鍚庯紝绔嬪嵆瑙ｉ攣銆屾垜鐞嗚В浜?/ 鎴戞病鐞嗚В / 绮捐銆嶆寜閽?
-      const understandBtn = document.querySelector(".understand-btn");
-      const dontUnderstandBtn = document.querySelector(".dont-understand-btn");
       const explainBtn = document.querySelector(".explain-btn");
       const askAiBtn = document.querySelector(".ask-ai-btn");   // 馃啎 鏂板杩欎竴琛?
 
-      if (understandBtn) {
-          understandBtn.disabled = false;
-          understandBtn.title = "";
-      }
-      if (dontUnderstandBtn) {
-          dontUnderstandBtn.disabled = false;
-          dontUnderstandBtn.title = "";
-      }
       if (explainBtn) {
           explainBtn.disabled = false;
           explainBtn.title = "";
@@ -2034,7 +1944,6 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
       }
       const feedbackHint = document.querySelector(".feedback-action-hint");
       if (feedbackHint) feedbackHint.hidden = true;
-
 
 
       // 鈿狅笍 鍏抽敭锛氫笉鍐嶉噸鏂版覆鏌撴暣寮犻鐩崱鐗囷紝閬垮厤棰樼洰琚竻绌?
@@ -2073,7 +1982,6 @@ async function gradeQuestion(idx, submitBtn, resultBox) {
   window.bankUI?.renderProgress();
   window.bankUI?.scheduleSave(true);
 }
-
 
 
 // 猸?鎯呮櫙杩佺Щ棰橈細鍚戝悗绔姹傚熀浜庨敊棰樼敓鎴愭柊鎯呭
@@ -2341,7 +2249,6 @@ function closeExplainModal() {
   }
 }
 
-// ===== t("i_dont_understand") button in main question card: only opens AI dialog, no automatic detailed explanation =====
 async function handleAskAi(idx) {
   if (!questionList || !questionList[idx]) return;
 
@@ -2379,9 +2286,6 @@ async function handleAskAi(idx) {
 }
 
 
-
-// Scenario-based question version of t("i_dont_understand")
-// Scenario-based question version of t("i_dont_understand") 鈥?directly enter AI Q&A mode (same logic as main exam questions)
 async function openScenarioQa() {
   if (currentScenarioIndex == null) return;
   const idx = currentScenarioIndex;
@@ -2689,69 +2593,6 @@ function setQuestions(rawText) {
 }
 
 
-
-// Convert URLs in text into clickable <a> links
-function renderTextWithLinks(container, text) {
-  // Match http/https links and capture trailing punctuation
-  const urlRegex = /(https?:\/\/[^\s)]+)([).,;:!?]?)/g;
-
-  let lastIndex = 0;
-  let match;
-
-  while ((match = urlRegex.exec(text)) !== null) {
-    const url = match[1];
-    const punctuation = match[2] || "";
-    const start = match.index;
-
-    // Add normal text before URL
-    if (start > lastIndex) {
-      const plainText = text.slice(lastIndex, start);
-      container.appendChild(document.createTextNode(plainText));
-    }
-
-    // Create <a> tag
-    const a = document.createElement("a");
-    a.href = url;
-    a.textContent = url;
-    a.target = "_blank"; // Open new tab
-    a.rel = "noopener noreferrer";
-    container.appendChild(a);
-
-    // Add punctuation after link if exists
-    if (punctuation) {
-      container.appendChild(document.createTextNode(punctuation));
-    }
-
-    lastIndex = urlRegex.lastIndex;
-  }
-
-  // Process remaining text after the last URL
-  if (lastIndex < text.length) {
-    container.appendChild(document.createTextNode(text.slice(lastIndex)));
-  }
-  window.mathUI.render(container);
-}
-
-// Append a chat message
-function appendMessage(role, text) {
-  const chatWindow = document.getElementById("chat-window");
-  const bubble = document.createElement("div");
-  bubble.classList.add("msg");
-
-  if (role === "user") {
-    bubble.classList.add("msg-user");
-    // User messages remain plain text
-    bubble.innerText = text;
-  } else {
-    bubble.classList.add("msg-bot");
-    // Bot messages: convert URLs into clickable links
-    renderTextWithLinks(bubble, text);
-  }
-
-  chatWindow.appendChild(bubble);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-}
-
 // Render selectable material list on the right panel
 function renderMaterialEmptyHint(container) {
   if (!container) return;
@@ -3048,57 +2889,6 @@ function renderPastExamList() {
 }
 
 
-
-// Read a question from the right-side form and call /api/past_exam/add to save it into the database
-async function addPastExamQuestionFromForm() {
-  const textarea = document.getElementById("past-exam-question-input");
-  const typeSelect = document.getElementById("past-exam-question-type");
-  const yearInput = document.getElementById("past-exam-year");
-  const paperInput = document.getElementById("past-exam-paper");
-
-  if (!textarea) return;
-
-  const question = (textarea.value || "").trim();
-  if (!question) {
-    alert((currentLang === "zh" ? "????????????????" : "Please paste a past exam question into the text box first."));
-    return;
-  }
-
-  const body = {
-    question,
-    question_type: typeSelect ? typeSelect.value : "short_answer",
-    meta: {
-      year: yearInput ? yearInput.value.trim() : "",
-      paper: paperInput ? paperInput.value.trim() : "",
-    },
-  };
-
-  try {
-    const res = await fetch("/api/past_exam/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      // Clear input fields
-      textarea.value = "";
-      if (yearInput) yearInput.value = "";
-      if (paperInput) paperInput.value = "";
-
-      // Append new record to front-end cache and refresh list
-      if (!pastExamQuestions) pastExamQuestions = [];
-      pastExamQuestions.push(data.record);
-      renderPastExamList();
-    } else {
-      alert("Save failed: " + (data.msg || (currentLang === "zh" ? "????" : "Unknown error")));
-    }
-  } catch (e) {
-    console.error(e);
-    alert("Save failed, please check if the server is running.");
-  }
-}
-
 // Call /api/past_exam/delete to delete a specific question
 async function deletePastExamQuestion(id, questionText) {
   if (!confirm("Are you sure you want to delete this question from the past exam library?")) {
@@ -3156,7 +2946,6 @@ async function refreshKbStats() {
     const sendBtn = document.getElementById("send-btn");
     const ready = !!data.ready;  // 鍚庣宸茬粡鎶娿€屾湁鏂囦欢 + 鍚戦噺搴撻潪绌恒€嶄竴璧峰垽鏂ソ浜?
     kbReady = ready;
-    updateWorkspaceStatus();
     window.bankUI?.updateGenerateAvailability();
 
     if (sendBtn) {
@@ -3222,7 +3011,6 @@ async function sendMessage() {
     window.bankUI?.updateGenerateAvailability();
   }
 }
-
 
 
 // Upload files to knowledge base
@@ -3578,7 +3366,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
-
   if (sendBtn) {
     sendBtn.addEventListener("click", sendMessage);
   }
@@ -3637,7 +3424,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const accountName = document.getElementById("account-name");
   updateAccountAvatar(accountName ? accountName.textContent : "");
   setLanguage(localStorage.getItem(LANG_KEY) || "zh");
-  initWorkspaceComfortControls();
+  initThemeControls();
 });
 
 window.addEventListener("resize", () => {
@@ -3726,14 +3513,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-
-
-
-
-
-
-
-
-
 
 

@@ -1,0 +1,3 @@
+# Offline Python regressions. Browser tests additionally use Node + Playwright.
+-r requirements.txt
+pypdf>=5,<7

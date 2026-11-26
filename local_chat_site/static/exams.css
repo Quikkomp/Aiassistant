@@ -15,7 +15,7 @@ body.dark-theme #exam-message.is-error { color:#ffc0b4; background:#422c30; bord
 .exam-btn:active:not(:disabled) { transform:translateY(0); }
 .exam-btn.primary { background:#416df5; color:#fff; border-color:#416df5; }
 .exam-btn.primary:hover:not(:disabled) { background:#355fde; }
-.exam-btn.danger { color:#a65552; background:#fff7f5; border-color:#eed8d4; }
+
 .exam-view button:disabled,.exam-dialog button:disabled { opacity:.6; cursor:not-allowed; transform:none; }
 .exam-view button:focus-visible,.exam-dialog button:focus-visible { outline:2px solid #416df5; outline-offset:3px; }
 .exam-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }

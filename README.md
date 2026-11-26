@@ -9,7 +9,6 @@ A Flask-based local RAG study assistant. It lets users upload course materials, 
 - Ask questions grounded in uploaded materials.
 - Generate final-exam style practice questions.
 - Grade student answers and provide feedback.
-- Optional Google Scholar search through SerpAPI.
 - Optional MySQL storage for accounts, rounds, answers, and chat history.
 - Learning groups with owner-managed membership, invitation links/QR codes, reviewed exam delivery and group-scoped results.
 
@@ -48,7 +47,7 @@ Aiassistant/
     auth_routes.py
     mail_service.py
     document_loader.py
-    rag_agentV3_2.py
+    rag_agent.py
     static/
     templates/
   tests/
@@ -57,6 +56,24 @@ Aiassistant/
 ```
 
 Runtime folders such as `materials`, `vector_store`, `student_logs`, `literature_cache`, and `exam_db` are intentionally ignored by Git because they may contain private uploads, generated indexes, logs, or cached data.
+
+## Source cleanup
+
+The current AI module is `local_chat_site/rag_agent.py`; `app:app` remains the
+web/WSGI entry point. Retired scholarly-search/APA-review prompts, the old
+interactive command-line assistant, its shared-log feedback endpoint and the
+unused manual past-question form/API have been removed. Document-based question
+generation, paper-template import, independent question review, grading, tutoring,
+personalized round analysis, exams and groups remain active.
+
+Superseded images and their dead UI handlers/styles are deleted, not archived in
+the source tree. Git history remains available for recovery. Dependencies now
+list the direct runtime packages instead of a full unrelated environment freeze;
+their existing pinned versions are preserved. Use `requirements-test.txt` for the
+Python regression environment. Deployments must restart the existing service;
+do not uninstall packages from a running production virtual environment. No
+account database, uploaded material, vector index, log or private `.env` file is
+deleted or migrated by this cleanup.
 
 ## Setup
 
@@ -79,7 +96,7 @@ pip install -r requirements.txt
 Copy-Item .env.example local_chat_site\.env
 ```
 
-Then fill in at least `OPENAI_API_KEY`. Set `SERPAPI_KEY`, `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `TESSERACT_CMD` as needed.
+Then fill in at least `OPENAI_API_KEY`. Set `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `TESSERACT_CMD` as needed.
 
 4. Run the app.
 

@@ -42,7 +42,9 @@ const ready=new Promise((resolve,reject)=>{let raw='';fixture.stdout.on('data',c
     assert.equal(await teacher.locator('img[src*="metathink-logo"]').count(),0);
     await teacher.locator('.auth-topbar .logo-img').evaluate(img=>img.decode());
     assert.ok(await teacher.locator('.auth-topbar .logo-img').evaluate(img=>img.naturalWidth>0&&img.src.includes('wizpractice-mark.svg')));
-    assert.ok(!/MetaThink|Meta Think|Exercise Generator/.test(await teacher.locator('body').innerText()));
+    assert.equal(await teacher.locator('.auth-footer-credit').innerText(),'MetaThink AI & STEAM Lab@XJTLU');
+    const productCopy=(await teacher.locator('body').innerText()).replaceAll('MetaThink AI & STEAM Lab@XJTLU','');
+    assert.ok(!/MetaThink|Meta Think|Exercise Generator/.test(productCopy));
     assert.equal(await teacher.locator('#login-form').isVisible(),false);
     const cards=await teacher.locator('.auth-role-card').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,w:r.width,h:r.height};}));
     assert.ok(cards[0].w>=399&&cards[0].w<=401&&cards[0].h>=570&&cards[0].x<cards[1].x);

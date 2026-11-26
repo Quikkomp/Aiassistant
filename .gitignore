@@ -3,6 +3,11 @@
 __pycache__/
 *.py[cod]
 *.pyc.*
+/.venv/
+/venv/
+/vector_store/
+/tmp/
+/output/
 
 local_chat_site/.env
 local_chat_site/app_users.sqlite3*

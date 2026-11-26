@@ -104,7 +104,7 @@ class RouteTests(StoreTests):
 
 class GenerationTests(unittest.TestCase):
     def test_written_requirements_and_selected_source_reach_model(self):
-        tree = ast.parse((ROOT / "local_chat_site/rag_agentV3_2.py").read_text(encoding="utf-8"))
+        tree = ast.parse((ROOT / "local_chat_site/rag_agent.py").read_text(encoding="utf-8"))
         cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "RagAgent")
         method = next(node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "generate_questions")
         scope = {"os": os}

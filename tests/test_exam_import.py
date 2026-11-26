@@ -16,7 +16,7 @@ from document_loader import read_pdf, read_txt, read_docx
 
 
 def harness():
-    tree = ast.parse((ROOT / "local_chat_site/rag_agentV3_2.py").read_text(encoding="utf-8"))
+    tree = ast.parse((ROOT / "local_chat_site/rag_agent.py").read_text(encoding="utf-8"))
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "RagAgent")
     names = {"_load_exam_db", "_save_exam_db", "_extract_questions_from_text", "import_past_exam_from_file"}
     methods = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in names]

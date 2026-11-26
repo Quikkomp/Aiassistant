@@ -213,7 +213,7 @@ const server = http.createServer(async (req, res) => {
     await page.locator('#scenario-modal').waitFor({state:'visible'});
     assert.equal(await page.locator('#scenario-modal').isVisible(), true);
     await page.locator('#scenario-close-btn').click();
-    if (!(await page.locator('.understand-row').isVisible())) await page.locator('.feedback-tools > summary').click();
+    if (!(await page.locator('.learning-tools-row').isVisible())) await page.locator('.feedback-tools > summary').click();
     await page.waitForFunction(() => Array.from(document.querySelectorAll('.feedback-action-buttons button')).every(el => el.getAnimations().every(animation => animation.playState === 'finished')));
     await page.screenshot({ path: path.join(out, 'feedback-actions-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });

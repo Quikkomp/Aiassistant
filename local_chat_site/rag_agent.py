@@ -1,8 +1,4 @@
-# ============================================
-# rag_agent_v5_log.py
-# 🚀 智能RAG助教 + 关键词提取 + Google Scholar学术检索 + 学生提问记录与学习反馈
-# ============================================
-
+"""WizPractice study agent: material ingestion, question generation and tutoring."""
 from openai import OpenAI
 from dotenv import load_dotenv
 from document_loader import load_documents, read_txt, read_pdf, read_docx
@@ -14,7 +10,6 @@ from langchain_core.documents import Document
 import os
 import sys
 import shutil
-import requests
 import json
 import base64
 import mimetypes
@@ -79,151 +74,23 @@ load_dotenv()
 TESSERACT_AVAILABLE = configure_tesseract()
 
 api_key = os.getenv("OPENAI_API_KEY")
-serpapi_key = os.getenv("SERPAPI_KEY")
 
 if not api_key:
     print("❌ 未检测到 OPENAI_API_KEY，请检查 .env 文件！")
 else:
     print("✅ 已加载 OPENAI_API_KEY。")
 
-if not serpapi_key:
-    print("⚠️ 未检测到 SERPAPI_KEY（Google Scholar 搜索将不可用）")
 
 client = OpenAI(api_key=api_key)
-db = None
-
-# # -------------------
-# # 1️⃣ 加载资料
-# # -------------------
-# print("\n📚 正在加载 materials 文件夹下的资料...")
-# docs = load_documents("materials")
-#
-# if not docs:
-#     print("❌ 未找到任何文档，请确认 materials 文件夹中有 .txt / .pdf / .docx 文件。")
-# else:
-#     print(f"✅ 已加载 {len(docs)} 个文件: {list(docs.keys())}")
-#
-# all_docs = [
-#     Document(page_content=text, metadata={"source": name})
-#     for name, text in docs.items()
-# ]
-#
-# # -------------------
-# # 2️⃣ 分块
-# # -------------------
-# print("\n📚 正在加载 materials 文件夹下的资料...")
-# docs = load_documents("materials")
-#
-# # 先假设没有任何文本块
-# all_docs = []
-# chunks = []
-#
-# if not docs:
-#     # 这里直接提示 + 保持 db = None，不再尝试构建向量库
-#     print("⚠️ 未找到任何文档，本地知识库暂时为空。")
-# else:
-#     print(f"✅ 已加载 {len(docs)} 个文件: {list(docs.keys())}")
-#
-#     # 1️⃣ 组装 LangChain 的 Document
-#     all_docs = [
-#         Document(page_content=text, metadata={"source": name})
-#         for name, text in docs.items()
-#     ]
-#
-#     # -------------------
-#     # 2️⃣ 分块
-#     # -------------------
-#     print("\n✂️ 正在将文档切分为小块...")
-#     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-#     chunks = splitter.split_documents(all_docs)
-#     print(f"✅ 分块完成，共生成 {len(chunks)} 个文本块。")
-#
-#     # -------------------
-#     # 3️⃣ 生成向量数据库
-#     # -------------------
-#     if chunks:
-#         print("\n🧠 正在生成向量数据库 (FAISS)...")
-#         embeddings = OpenAIEmbeddings()
-#         db = FAISS.from_documents(chunks, embeddings)
-#         print("✅ 向量数据库创建成功！")
-#     else:
-#         # 有文件，但一个字都抽不出来（典型：纯图片 PDF）
-#         print("⚠️ 所有文档都无法抽取出文本，本地知识库暂时为空。")
-#         db = None
 
 
-# -------------------
-# 4️⃣ 系统提示语
-# -------------------
-SYSTEM_PROMPT = """
-# 角色
-你是一名面向**所有学科领域**的学术写作与文献综述智能助手；能够依据权威文献进行证据导向的梳理、比较与总结，并输出结构清晰、可追溯、有引文的回答。你可以处理教育学、医学、护理学、心理学、计算机科学等各类学术领域的问题；当问题涉及混合式学习（Blended Learning）或 HyFlex 时，同样按本规则处理。
-
-## 总体目标
-- 依据本地知识库与授权的外部文献，给出**有证据支撑的学术回答**；
-- 回答聚焦学术问题本身，不输出与学术无关的闲聊；
-- 对每个重要论断，尽量指出对应文献来源，并在结尾给出 **References (APA 7)** 列表。
-
-## 技能 1：收集与筛选证据
-1. 检索范围：
-   - 首先使用已接入的本地知识库/资料库（如 knowledge_base / materials 中的文献）；
-   - 如本地证据明显不足，且系统允许，可结合外部学术检索（如 Google Scholar / SerpAPI）补充文献。
-
-2. 证据筛选：
-   - 优先保留与用户问题**直接相关**的段落，例如：定义、理论/模型、研究发现、方法、实验结果、案例等；
-   - 舍弃广告性内容、与主题无关的段落、缺乏明确来源的泛泛陈述；
-   - 如命中的片段相关性较弱，应在回答中说明“证据有限/相关性较弱”。
-
-3. 证据不足时：
-   - 若现有文献不足以支撑可靠回答，应明确说明“证据不足/不确定”，而不是猜测；
-   - 可以提示用户：需要补充哪些类型的文献或允许扩展检索。
-
-## 技能 2：撰写学术回答 / 文献综述
-1. 默认输出结构（可适度调整以适配问题）：
-   - **简要总体概述**：1–2 句给出核心概念或结论；
-   - **3–5 个关键要点**：每个要点对应一个或一组研究结果/理论观点，并标明来源；
-   - **实践/设计/应用启示**（如适用）：2–3 条可操作的建议或启示；
-   - **References (APA 7)**：只列本次正文中明确使用过的文献。
-
-2. 引文规范（强约束）：
-   - 在正文中对重要论断使用文内引注，比如 `(Author, Year)` 或 `(Author1 & Author2, Year)`；
-   - 参考文献列表按 **APA 第 7 版** 格式书写，包含：作者、年份、标题、来源（期刊/出版社等）以及 DOI/URL（若已在资料中给出）；
-   - **不得编造**不存在的作者、年份、期刊名、页码、DOI 或结论；
-   - 正文与参考文献须一一对应：不得出现“正文未提及”的参考文献，也不得遗漏正文中已经引到的关键文献。
-
-3. 比较与概念澄清：
-   - 涉及多个理论/模型/干预/案例时，给出优点、局限、适用情境、实施要点等的对照；
-   - 若不同文献观点存在差异，说明各自立场、研究边界及可能原因，而非简单混合。
-
-4. 语言与风格：
-- Respond in the same language as the user's question unless the user explicitly requests another language. Reference lists may keep source titles in their original language;
-   - 首次出现的重要术语，尽量给出中英对照（如用户使用中文提问）；
-   - 先结论后证据，避免空泛、堆砌式罗列，突出“发现了什么、依据是什么、有什么启示”。
-
-## 限制与安全边界
-- 主题范围：可以处理任何学术领域的问题，但应始终围绕“学术与研究”展开；对于与学术无关的娱乐、闲聊、政治立场煽动等，礼貌拒绝或弱化回答。
-- 证据约束：仅使用本地知识库与明确授权的外部学术来源；不得凭空编造研究、数据或引文。
-- 准确性优先：当证据不足或研究结论相互矛盾时，要明确说明不确定性和争议点，而不是给出过度肯定的结论。
-- 一致性：同一概念/模型/量表等，应尽量使用同一权威来源的描述；若引用多源，应说明差别及原因。
-- 不输出思考链；不生成带有强烈个人偏见、与证据不符或不适合学术语境的内容。
-"""
-
-
-
-
-
-# -------------------
-# 5️⃣ 智能体类定义
-# -------------------
 class RagAgent:
     LOG_PATH = "student_logs/questions_log.json"
     EXAM_DB_PATH = os.path.join("exam_db", "past_exams.json")
 
-    def __init__(self, client, db, serpapi_key=None, exam_db_path=None):
+    def __init__(self, client, db, exam_db_path=None):
         self.client = client
         self.db = db
-        self.serpapi_key = serpapi_key
-        self.last_query = None
 
         if exam_db_path:
             self.exam_db_path = exam_db_path
@@ -322,33 +189,6 @@ class RagAgent:
             if temp_path and os.path.exists(temp_path):
                 os.remove(temp_path)
 
-    def add_past_exam_question(self, question_text, question_type="short_answer", meta=None):
-        """
-        向过往试卷数据库加入一道题目。
-        question_type 建议使用：fill_blank / multiple_choice / short_answer
-        meta 可以包含 year、course、source 等信息。
-        """
-        q = (question_text or "").strip()
-        if not q:
-            raise ValueError("question_text 不能为空。")
-
-        db = self._load_exam_db()
-        next_id = max((item.get("id", 0) for item in db), default=0) + 1
-
-        record = {
-            "id": next_id,
-            "question": q,
-            "question_type": question_type or "short_answer",
-        }
-        if meta and isinstance(meta, dict):
-            # 允许补充额外字段，例如 {"year": "2024", "paper": "A卷"}
-            for k, v in meta.items():
-                if k not in record:
-                    record[k] = v
-
-        db.append(record)
-        self._save_exam_db(db)
-        return record
 
     def list_past_exam_questions(self):
         """
@@ -389,7 +229,7 @@ class RagAgent:
         ):
             """
             调用大模型，把一整份试卷文本拆分为若干条结构化题目，并写入本地 JSON 题库。
-            返回新增题目的列表（每个元素是 add_past_exam_question 返回的 dict）。
+            返回解析后的题目记录列表。
             """
             if not raw_text or not raw_text.strip():
                 raise ExamImportError("text", "文件未读取到有效文字，请检查文件是否损坏或需要文字识别。")
@@ -630,7 +470,7 @@ class RagAgent:
         - 支持 png/jpg 等图片：用 OCR 把题目转成文本。
         - 对 PDF：如果 PyPDF2 没读出文本，则退回 OCR 方式。
 
-        返回新增题目的列表（每个元素是 add_past_exam_question 返回的 dict）。
+        返回解析后的题目记录列表。
         """
         if not os.path.exists(file_path):
             raise ExamImportError("read", "上传文件不存在，请重新上传。")
@@ -702,7 +542,6 @@ class RagAgent:
         return result
 
 
-
     # ---- 🧾 提问日志系统 ----
     def log_question(self, user_query, reply):
         """保存学生提问记录"""
@@ -728,144 +567,7 @@ class RagAgent:
         except Exception as e:
             print(f"⚠️ 日志保存失败: {e}")
 
-    # ---- 🧭 任务规划 ----
-    def plan(self, query: str) -> str:
-            """
-            根据用户的问题选择任务类型：
-            - answer：直接用本地知识库 + 自身推理回答
-            - search：调用 Google Scholar / 外部文献搜索，做文献综述
-            - learn：将用户提供的新资料加入知识库
-            """
-            prompt = f"""
-    你是一个负责处理各种学术任务的智能代理（不限于某一学科或主题），可以处理教育学、医学、计算机科学、心理学等所有学术领域的问题。
 
-    你现在拥有的资源：
-    1. 本地文献知识库（位于 knowledge_base/materials 等文件夹中，已构建为向量数据库，可用于检索和回答问题）。
-    2. 外部文献搜索能力（通过 Google Scholar + SerpAPI 获取最新或更广泛的学术论文）。
-    3. 将新资料“学习”并加入本地知识库的能力（由系统的 ingest / learn 接口实现）。
-
-    你的任务是：**只根据用户给出的 query，判断当前应该执行哪一种任务类型**。
-
-    可选的任务类型只有三个（全部使用小写英文）：
-    - "answer"：当你认为本地知识库中已经有足够的信息，或者问题属于
-        * 概念/术语的解释或比较；
-        * 理论、模型、方法的说明与对比；
-        * 总结已有材料中的观点、结论、优缺点；
-        * 对用户提供的文章进行解读、对比、提炼；
-      且不需要额外去互联网上检索新文献时，选择 answer。
-
-    - "search"：当你认为需要**系统性地查找学术文献**时，例如：
-        * 需要做文献综述（review）、系统综述（systematic review）、meta-analysis 等；
-        * 需要查找“最新研究”“近几年研究趋势”“某领域代表性论文”；
-        * 需要获取具体论文、期刊文章，而本地知识库明显不够时；
-      此时使用外部文献搜索更合适，就选择 search。
-
-    - "learn"：当用户的意图是让系统“学习/导入/加入/更新”资料，而不是立刻回答具体学术问题时，例如：
-        * 用户说 “帮我把这些文章加入你的知识库”；
-        * 用户强调 “先学习这些材料/文献，以后回答我的问题”；
-      这类以“扩充知识库”为主的请求，选择 learn。
-
-    注意：
-    - 不要再把自己限定在 Blended Learning 或 HyFlex Learning 主题上；无论问题来自哪个学科或主题，都按上述规则判断。
-    - 如果问题本身就是一般性学术问题（例如任何领域的定义、理论、模型、实验结果等），且你觉得不需要实时检索最新论文，优先选择 "answer"。
-    - 只有在**明显**需要查找额外文献时才选择 "search"。
-    - 只有当用户明确提出“让你学习/导入新的资料”时才选择 "learn"。
-
-    输出要求（非常重要）：
-    - 你 **只能** 输出下面三个小写单词之一：answer、search 或 learn。
-    - 不能输出解释、理由、标点或其它任何内容。
-    - 不要加引号，不要加换行或空格。
-    用户的问题是：
-    {query}
-            """.strip()
-
-            completion = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "你是一个严谨的学术助手，会根据用户的需求在 answer / search / learn 三种任务中选择其一。",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            decision = completion.choices[0].message.content.strip().lower()
-            # 保险起见，只保留三种合法输出
-            if decision not in {"answer", "search", "learn"}:
-                decision = "answer"
-            print(f"🧠 任务规划结果: {decision}")
-            return decision
-
-        # ---- 📖 改进版：基于所有相关资料进行总结回答 ----
-    def answer(self, query):
-        print("🔍 正在检索知识库（广域匹配模式）...")
-
-        # 1️⃣ 空库保护
-        if self.db is None:
-            return (
-                "⚠️ The local knowledge base is currently empty or not loaded.\n"
-                "Please upload materials first, or rebuild the knowledge base."
-            )
-
-        try:
-            # 2️⃣ 使用 similarity_search_with_score 返回相似度分数
-            results = self.db.similarity_search_with_score(query, k=50)
-            print(f"✅ 从数据库中检索到 {len(results)} 个候选片段。")
-
-            # 3️⃣ 设定相关度阈值（例如 0.3，越小表示越相似）
-            threshold = 0.3
-            relevant_docs = [doc for doc, score in results if score < threshold]
-
-            # 如果匹配片段太少，则放宽阈值
-            if len(relevant_docs) < 3:
-                relevant_docs = [doc for doc, score in results[:10]]
-                print("⚠️ 匹配片段较少，已自动放宽相似度筛选。")
-
-            # 4️⃣ 合并所有高相关内容
-            combined_context = "\n\n".join(
-                [
-                    f"📄 来源：{d.metadata.get('source', '未知文件')}\n{d.page_content}"
-                    for d in relevant_docs
-                ]
-            )
-
-            # 限制文本长度（避免超出 token 限制）
-            if len(combined_context) > 6000:
-                combined_context = combined_context[:6000] + "\n...[内容过长已截断]"
-
-            print(f"🧠 已整合 {len(relevant_docs)} 个片段进行总结。")
-
-            # 5️⃣ 构建提示词
-            prompt = f"""
-    You are an educational-technology research assistant.
-
-    Based on ALL the materials below, answer the question "{query}" in a structured and synthetic way.
-
-    Requirements:
-    - First give a 1–2 sentence overall definition or overview.
-    - Then extract 3–5 key points, models, or findings, and for each one indicate the source (file name or author).
-    - End with a short concluding paragraph summarizing the main trends or consensus.
-    - Write your answer in the same language as the user's question unless the user explicitly asks for another language.
-
-    【资料内容】
-    {combined_context}
-    """
-
-            # 6️⃣ 向模型请求回答
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-
-            content = response.choices[0].message.content
-            self.log_question(query, content)
-            return content
-
-        except Exception as e:
-            return f"❌ 回答失败: {e}"
             # ---- 🧪 期末复习出题 ----
 
             # ---- 🧪 Final exam question generation ----
@@ -1716,80 +1418,6 @@ Use clear, supportive language suitable for undergraduate students.
 
             return answer_text
 
-    # ---- 🎯 关键词提取 ----
-    def extract_keywords(self, query):
-        prompt = f"""
-You are an academic keyword extractor.
-Given ONLY the following question, extract 3-5 concise English keywords for literature search.
-Question: "{query}"
-Output: comma-separated keywords only.
-"""
-        try:
-            result = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return result.choices[0].message.content.strip()
-        except Exception as e:
-            print(f"❌ 关键词提取失败: {e}")
-            return query
-
-    # ---- 🌐 谷歌学术搜索 ----
-    def search_and_summarize(self, query=None):
-        if not self.serpapi_key:
-            return "⚠️ SERPAPI_KEY 未设置，无法使用 Google Scholar 搜索。"
-
-        if not query and self.last_query:
-            query = self.last_query
-            print(f"🔁 使用上次问题进行学术搜索：{query}")
-        elif not query:
-            return "⚠️ 当前无有效问题，请先提问。"
-
-        self.last_query = query
-        keywords = self.extract_keywords(query)
-        print(f"🎯 提取到的检索关键词：{keywords}")
-
-        try:
-            params = {
-                "engine": "google_scholar",
-                "q": keywords,
-                "api_key": self.serpapi_key,
-                "num": 5
-            }
-            response = requests.get("https://serpapi.com/search", params=params)
-            data = response.json()
-
-            results = []
-            for item in data.get("organic_results", []):
-                title = item.get("title")
-                link = item.get("link")
-                snippet = item.get("snippet", "")
-                results.append(f"• {title}\n  {snippet}\n  🔗 {link}\n")
-
-            if not results:
-                return "⚠️ 未从 Google Scholar 找到相关结果。"
-
-            summary_prompt = f"""
-Summarize the following papers into a concise academic overview (3-5 sentences)
-focusing on blended learning or HyFlex education.
-
-Papers:
-{chr(10).join(results)}
-"""
-            completion = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a research summarizer."},
-                    {"role": "user", "content": summary_prompt}
-                ]
-            )
-            summary = completion.choices[0].message.content
-            self.log_question(query, summary)
-            self.last_query = None
-            return f"📚 Here is a literature summary based on the keywords {keywords}:\n\n{summary}\n\nReferences:\n" + "\n".join(results)
-
-        except Exception as e:
-            return f"❌ 搜索失败: {e}"
 
     # ---- 📘 动态学习：重建整个知识库 ----
     def ingest_material(self, folder_path="materials"):
@@ -1904,46 +1532,6 @@ Papers:
         finally:
             build_lock.release()
 
-    # ---- 🎓 学习反馈功能 ----
-    def summarize_learning(self):
-        """总结学生最近的学习问题并生成反馈"""
-        if not os.path.exists(self.LOG_PATH):
-            return "⚠️ There are no logged questions yet."
-
-        with open(self.LOG_PATH, "r", encoding="utf-8") as f:
-            logs = json.load(f)
-
-        if not logs:
-            return ("⚠️ The question log is empty.")
-
-        recent_logs = logs[-20:]
-        history_text = "\n".join([f"Q{i+1}: {item['question']}" for i, item in enumerate(recent_logs)])
-
-        prompt = f"""
-        You are a learning coach. The following are the student's recent questions:
-
-        {history_text}
-
-        Please:
-        1. Summarize the main topics the student is focusing on.
-        2. Point out their strengths and common misunderstandings.
-        3. Give 3 concrete and personalized study suggestions.
-
-        Respond in the same language as the student's recent questions when possible.
-                """.strip()
-
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "你是一名负责学习反馈的智能助教。"},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            feedback = response.choices[0].message.content
-            return f"🧭 Here is your learning feedback.\n{feedback}"
-        except Exception as e:
-            return f"❌ 生成反馈失败: {e}"
 
     def summarize_wrong_questions(self, wrong_items: list) -> str:
             """
@@ -2085,33 +1673,3 @@ Do not simply restate each question. Synthesize patterns across the whole round.
                 return f"鈿狅笍 Failed to generate full-round analysis: {e}"
 
 
-def chat_with_agent():
-    print("\n🤖 智能 RAG Agent 启动！输入 'exit' 退出\n")
-    agent = RagAgent(client, db, serpapi_key)
-
-    while True:
-        query = input("👩‍🎓 你：")
-        if query.lower() in ["exit", "quit", "bye"]:
-            print("👋 再见～")
-            break
-
-        plan = agent.plan(query)
-        print(f"🧭 任务类型：{plan}")
-
-        if plan == "answer":
-            reply = agent.answer(query)
-        elif plan == "search":
-            reply = agent.search_and_summarize(query)
-        elif plan == "learn":
-            reply = agent.ingest_material("materials")
-        elif plan == "feedback":
-            reply = agent.summarize_learning()
-        else:
-            reply = "❓ Unable to identify task type. Please try again."
-
-        print(f"\n🤖 Agent：{reply}\n")
-
-
-
-if __name__ == "__main__":
-    chat_with_agent()

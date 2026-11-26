@@ -3,7 +3,6 @@ import re
 import sqlite3
 import sys
 import uuid
-import hashlib
 from typing import List
 from flask import Flask, render_template, request, jsonify, session, send_file
 from werkzeug.utils import secure_filename
@@ -14,7 +13,7 @@ try:
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 except AttributeError:
     pass
-import rag_agentV3_2 as rag_agent_module  # ✅ 修改为你的文件名
+import rag_agent as rag_agent_module
 import mysql.connector
 from collections import Counter
 from question_bank import BankStore
@@ -199,10 +198,6 @@ os.makedirs(PAST_EXAM_UPLOAD_FOLDER, exist_ok=True)
 # 一个进程内的缓存：每个 user_id 对应一个 RagAgent 实例
 
 
-
-
-
-
 # ---------------- 用户 & Agent 工具函数 ----------------
 
 def get_current_user_id() -> str:
@@ -385,7 +380,6 @@ def get_user_exam_db_path() -> str:
 
 def get_rag_agent_for_current_user():
     """
-    不再使用进程内 _USER_AGENTS 缓存。
     每次请求都基于当前 session 的 user_id 创建一个新的 RagAgent，
     然后按该 user_id 从磁盘加载当前用户自己的向量库。
     """
@@ -395,7 +389,6 @@ def get_rag_agent_for_current_user():
     agent = rag_agent_module.RagAgent(
         client=rag_agent_module.client,
         db=None,  # 每次请求从空开始，随后尝试加载当前用户自己的库
-        serpapi_key=rag_agent_module.serpapi_key,
         exam_db_path=exam_db_path
     )
 
@@ -405,7 +398,6 @@ def get_rag_agent_for_current_user():
         print(f"⚠️ ensure_db_loaded 失败（user_id={user_id}）：{e}")
 
     return agent
-
 
 
 # ---------------- 工具函数 ----------------
@@ -449,9 +441,6 @@ def call_local_model(
         selected_exam_ids=selected_exam_ids or None,
         style_template_only=style_template_only,
     )
-
-
-
 
 
 # ---------------- 路由 ----------------
@@ -629,8 +618,6 @@ def profile_page():
     return render_template("profile.html", auth=current_auth_payload())
 
 
-
-
 @app.route("/api/profile", methods=["GET"])
 def api_profile():
     user = get_profile_user()
@@ -649,8 +636,6 @@ def api_profile():
         print("Profile round count failed:", e)
 
     return jsonify({"ok": True, "user": user, "total_rounds": total_rounds})
-
-
 
 
 @app.route("/api/profile/rounds", methods=["GET"])
@@ -767,7 +752,7 @@ def material_stats():
     })
 
 
-# @app.route("/api/upload", methods=["POST"])
+@app.route("/api/upload", methods=["POST"])
 # def upload():
 #     if "files" not in request.files:
 #         return jsonify({"ok": False, "msg": "没有收到文件"}), 400
@@ -1121,7 +1106,7 @@ def grade():
 def explain_detailed():
     """
     精讲模式：
-    学生点击 "I don't understand" 后，针对当前试题给出更详细的知识点讲解。
+    针对当前试题生成详细的知识点讲解。
     """
     data = request.get_json(force=True) or {}
 
@@ -1228,16 +1213,6 @@ def scenario_question():
         return jsonify({"ok": False, "msg": str(e)}), 500
 
 
-
-@app.route("/api/feedback", methods=["GET"])
-def feedback():
-    try:
-        agent = get_rag_agent_for_current_user()
-        reply = agent.summarize_learning()
-        return jsonify({"ok": True, "reply": reply})
-    except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)})
-
 @app.route("/api/past_exam/list", methods=["GET"])
 def past_exam_list():
     """
@@ -1328,41 +1303,6 @@ def past_exam_upload():
     })
 
 
-
-@app.route("/api/past_exam/add", methods=["POST"])
-def past_exam_add():
-    """
-    往题库中加入一道过往试卷题目。
-    请求体 JSON 示例：
-    {
-      "question": "Explain the difference between circuit switching and packet switching.",
-      "question_type": "short_answer",
-      "meta": {
-        "year": "2024",
-        "paper": "期末卷A"
-      }
-    }
-    """
-    data = request.get_json(force=True) or {}
-    question = (data.get("question") or "").strip()
-    question_type = (data.get("question_type") or "short_answer").strip()
-    meta = data.get("meta") or {}
-
-    if not question:
-        return jsonify({"ok": False, "msg": "question 不能为空"}), 400
-
-    try:
-        agent = get_rag_agent_for_current_user()
-        record = agent.add_past_exam_question(
-            question_text=question,
-            question_type=question_type,
-            meta=meta if isinstance(meta, dict) else {},
-        )
-        return jsonify({"ok": True, "record": record})
-    except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)}), 500
-
-
 @app.route("/api/past_exam/delete", methods=["POST"])
 def past_exam_delete():
     """
@@ -1391,7 +1331,6 @@ def past_exam_delete():
         return jsonify({"ok": True, "deleted": deleted})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
-
 
 
 @app.route("/api/kb_status", methods=["GET"])

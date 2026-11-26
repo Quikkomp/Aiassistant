@@ -20,5 +20,5 @@ Role cards use decorative inline SVGs instead of cartoon people:
 
 These graphics are screen-reader hidden, have no pointer events, and do not
 overlap role titles/descriptions at desktop or mobile widths. Existing gentle
-entry/hover motion respects the reduced-motion setting. Archived PNG illustrations
-are not requested by the current pages.
+entry/hover motion respects the reduced-motion setting. Superseded PNG characters,
+backgrounds and the old brand logo have been removed; Git history retains them.

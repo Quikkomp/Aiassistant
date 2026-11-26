@@ -3,7 +3,7 @@ import os
 from io import BytesIO
 from urllib.parse import urlparse
 from flask import Blueprint, jsonify, request, session, render_template, send_file, current_app
-from exam_store import ExamStore, ExamError, text
+from exam_store import ExamError, text
 from exam_ai import ExamAI
 from account_access import is_teacher, require_teacher
 

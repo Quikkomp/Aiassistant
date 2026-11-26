@@ -96,13 +96,13 @@ body.dark-theme .bank-navigation .bank-nav:is(.active,:hover,:focus-visible) .ba
 .bank-app .question-card-body { color:#343e4c !important; font-size:16px; line-height:1.9; margin:24px 0; }
 .bank-app .answer-input { background:#fafbfc !important; border:1px solid #e0e6ed !important; border-radius:9px; min-height:120px; padding:14px !important; font-size:15px; }
 .bank-app .submit-btn { background:#416df5 !important; border-radius:8px !important; box-shadow:none !important; min-height:40px; }
-.bank-app .feedback-tools .understand-row { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); align-items:start; width:100%; max-width:760px; gap:22px; margin:0; }
+.bank-app .feedback-tools .learning-tools-row { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); align-items:start; width:100%; max-width:760px; gap:22px; margin:0; }
 .bank-app .feedback-tools { border-top:0; margin-top:20px; padding-top:0; }
 .feedback-action-group { min-width:0; }
 .feedback-action-label { display:block; margin-bottom:8px; color:#53647e; font-size:12px; font-weight:600; }
 .feedback-action-buttons { --action-bg:#fff; --action-ink:#435b85; --action-border:#dbe3f1; --action-hover:#f0f5ff; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .feedback-learning-group .feedback-action-buttons { grid-template-columns:repeat(3,minmax(0,1fr)); }
-.bank-app .feedback-tools .understand-row button,
+.bank-app .feedback-tools .learning-tools-row button,
 .bank-app .feedback-tools #scenario-entry-btn {
   display:inline-flex !important; justify-content:center; align-items:center; box-sizing:border-box;
   width:100% !important; min-width:0 !important; max-width:none !important; height:40px !important; min-height:40px !important;
@@ -112,21 +112,21 @@ body.dark-theme .bank-navigation .bank-nav:is(.active,:hover,:focus-visible) .ba
   white-space:normal !important; text-align:center;
   transition:background 160ms ease,border-color 160ms ease,box-shadow 160ms ease,transform 160ms ease;
 }
-.bank-app .feedback-tools .understand-btn { --action-bg:#edf7f1; --action-ink:#2f7052; --action-border:#cce5d5; --action-hover:#e0f1e7; }
-.bank-app .feedback-tools .dont-understand-btn { --action-bg:#fff5e9; --action-ink:#93602b; --action-border:#eddbbf; --action-hover:#ffedd6; }
+
+
 .bank-app .feedback-tools #scenario-entry-btn { --action-bg:#edf3ff; --action-ink:#3557ae; --action-border:#cddcf9; --action-hover:#e0eaff; }
 @media(hover:hover) {
-  .bank-app .feedback-tools .understand-row button:hover:not(:disabled),
+  .bank-app .feedback-tools .learning-tools-row button:hover:not(:disabled),
   .bank-app .feedback-tools #scenario-entry-btn:hover:not(:disabled) { background:var(--action-hover) !important; border-color:var(--action-ink) !important; box-shadow:0 4px 10px #263f6610 !important; transform:translateY(-2px); }
 }
-.bank-app .feedback-tools .understand-row button:active:not(:disabled),
+.bank-app .feedback-tools .learning-tools-row button:active:not(:disabled),
 .bank-app .feedback-tools #scenario-entry-btn:active:not(:disabled) { transform:translateY(0) scale(.98); box-shadow:none !important; }
-.bank-app .feedback-tools .understand-row button:focus-visible { outline:2px solid #416df5; outline-offset:3px; }
-.bank-app .feedback-tools .understand-row button:disabled,
+.bank-app .feedback-tools .learning-tools-row button:focus-visible { outline:2px solid #416df5; outline-offset:3px; }
+.bank-app .feedback-tools .learning-tools-row button:disabled,
 .bank-app .feedback-tools #scenario-entry-btn:disabled { background:#f5f6f8 !important; color:#7b8492 !important; border-color:#e4e7ed !important; opacity:1; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
 .feedback-action-hint { margin:12px 0 0; color:#66758c; font-size:12px; line-height:1.6; }
 .bank-app .feedback-tools[open] .feedback-action-buttons button { animation:feedbackActionIn 320ms ease-out backwards; }
-.feedback-tools[open] .feedback-response-group button:nth-child(2) { animation-delay:70ms; }
+
 .feedback-tools[open] .feedback-learning-group button:nth-child(1) { animation-delay:140ms; }
 .feedback-tools[open] .feedback-learning-group button:nth-child(2) { animation-delay:210ms; }
 .feedback-tools[open] .feedback-learning-group button:nth-child(3) { animation-delay:280ms; }
@@ -219,7 +219,7 @@ body.dark-theme .bank-navigation .bank-nav:is(.active,:hover,:focus-visible) .ba
 .creator-url-row button:disabled { opacity:.55; cursor:wait; }
 .creator-url-panel > p { margin:9px 0 0; font-size:11px; line-height:1.7; color:#657895; }
 .creator-resources { margin-top:14px; }
-.bank-app .feedback-tools .understand-row { grid-template-columns:minmax(0,1fr); }
+.bank-app .feedback-tools .learning-tools-row { grid-template-columns:minmax(0,1fr); }
 body.dark-theme .creator-url-panel { background:#172740; border-color:#3a5279; }
 body.dark-theme .creator-url-panel > label { color:#d1def3; }
 body.dark-theme .creator-url-panel > p { color:#b2c3df; }
@@ -335,10 +335,10 @@ body.dark-theme .bank-app .question-card-body { color:#dce5f3 !important; }
 body.dark-theme .bank-app .answer-input { background:#101b2e !important; }
 body.dark-theme .feedback-action-label,body.dark-theme .feedback-action-hint { color:#b9c8dd; }
 body.dark-theme .feedback-action-buttons { --action-bg:#1b2b44; --action-ink:#c2d4ef; --action-border:#3a5279; --action-hover:#263d61; }
-body.dark-theme .bank-app .feedback-tools .understand-btn { --action-bg:#1b352c; --action-ink:#a8ddbf; --action-border:#37594a; --action-hover:#254638; }
-body.dark-theme .bank-app .feedback-tools .dont-understand-btn { --action-bg:#3a3024; --action-ink:#ebc796; --action-border:#66523a; --action-hover:#4a3b29; }
+
+
 body.dark-theme .bank-app .feedback-tools #scenario-entry-btn { --action-bg:#223554; --action-ink:#bdd1ff; --action-border:#45608e; --action-hover:#2c456a; }
-body.dark-theme .bank-app .feedback-tools .understand-row button:disabled,
+body.dark-theme .bank-app .feedback-tools .learning-tools-row button:disabled,
 body.dark-theme .bank-app .feedback-tools #scenario-entry-btn:disabled { background:#1c2636 !important; color:#93a1b7 !important; border-color:#334056 !important; }
 body.dark-theme .bank-app .feedback-tools > summary,
 body.dark-theme .bank-app .practice-score-details > summary { background:#1c2d49; border-color:#3a5279; color:#c2d4ff; }
@@ -394,7 +394,7 @@ body.dark-theme .create-bank-dialog input,body.dark-theme .create-bank-dialog te
   .bank-app .left-panel { padding:16px 12px; }
   .practice-heading { flex-direction:column; align-items:flex-start; gap:8px; }
   .bank-app .question-card-body { font-size:15px; }
-  .bank-app .feedback-tools .understand-row { grid-template-columns:1fr; gap:16px; }
+  .bank-app .feedback-tools .learning-tools-row { grid-template-columns:1fr; gap:16px; }
   .bank-app .exam-nav-wrapper { grid-template-columns:1fr 1fr !important; }
   .bank-app .exam-nav-center { grid-column:1/-1; grid-row:2; }
   .bank-app .exam-nav-right { display:contents !important; }
